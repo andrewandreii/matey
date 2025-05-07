@@ -1,0 +1,146 @@
+use serde::Deserialize;
+
+use std::{collections::HashMap, ffi::OsString, fmt::Debug, fs::File, io};
+
+use material_colors::scheme::Scheme;
+
+use crate::error::{ConfigError, Fallible};
+
+use super::template::Template;
+use super::tokenizer::{ConfigToken, Token};
+
+#[derive(Debug, Deserialize)]
+pub struct ConfigOptions<'a> {
+    pub outfile: &'a str,
+}
+
+impl<'a> ConfigOptions<'a> {
+    pub fn new(outfile: &'a str) -> Self {
+        ConfigOptions { outfile }
+    }
+}
+
+#[derive(Debug)]
+pub struct Config<'a> {
+    options: ConfigOptions<'a>,
+    foreach_template: Template<'a>,
+    additional_template: Template<'a>,
+}
+
+impl<'a> Config<'a> {
+    pub fn write(&self, scheme: Scheme, hashmap: &HashMap<String, String>) -> io::Result<()> {
+        let mut file = File::create(self.options.outfile)?;
+
+        self.foreach_template.run_with_scheme(&mut file, scheme)?;
+
+        self.additional_template
+            .run_with_hashmap(&mut file, &hashmap)?;
+
+        Ok(())
+    }
+}
+
+fn parse_error(filename: &OsString, token: &Token, message: String) -> ConfigError {
+    ConfigError::parse_error(format!(
+        "({:#?} at {}) {}",
+        filename, token.location, message
+    ))
+}
+
+pub fn parse_tokens<'a>(tokens: Vec<ConfigToken<'a>>, filename: OsString) -> Fallible<Config<'a>> {
+    let mut iter = tokens.iter().peekable();
+
+    let mut options = ConfigOptions::new("default.conf");
+    let mut foreach_template: Option<Template<'a>> = None;
+    let mut additional_template: Option<Template<'a>> = None;
+    while let Some(token) = iter.peek() {
+        match token {
+            ConfigToken::OptionCommand(command) => match command.source {
+                "out" => {
+                    iter.next();
+                    if let Some(ConfigToken::Id(outfile)) = iter.next() {
+                        options.outfile = outfile.source;
+                    } else {
+                        return parse_error(
+                            &filename,
+                            command,
+                            "expected id after command token".to_string(),
+                        )
+                        .into();
+                    }
+
+                    if iter.next_if(|tt| **tt == ConfigToken::Eof) == None {
+                        if iter.next_if(|tt| **tt == ConfigToken::NewLine) == None {
+                            return parse_error(
+                                &filename,
+                                command,
+                                "expected newline after command".to_string(),
+                            )
+                            .into();
+                        }
+                    }
+                }
+                unknown => {
+                    return parse_error(&filename, command, format!("unknown command {}", unknown))
+                        .into();
+                }
+            },
+            ConfigToken::Id(name) => {
+                iter.next();
+                let template_ref = match name.source {
+                    "foreach" => &mut foreach_template,
+                    "once" => &mut additional_template,
+                    _ => {
+                        return parse_error(
+                            &filename,
+                            name,
+                            format!("unsupported template type {}", name.source),
+                        )
+                        .into();
+                    }
+                };
+
+                let next = if let Some(next) = iter.next() {
+                    next
+                } else {
+                    unreachable!()
+                };
+
+                match next {
+                    ConfigToken::TemplateBlock(template) => {
+                        *template_ref = Some(Template::new(template.source));
+                    }
+                    _ => {
+                        return parse_error(
+                            &filename,
+                            name,
+                            "expected template after id".to_string(),
+                        )
+                        .into();
+                    }
+                }
+            }
+            ConfigToken::Number(_token) => todo!(),
+            ConfigToken::TemplateBlock(token) => {
+                return parse_error(
+                    &filename,
+                    token,
+                    "Unnamed templates aren't allowed".to_string(),
+                )
+                .into();
+            }
+            ConfigToken::NewLine => {
+                iter.next();
+            }
+            ConfigToken::Eof => {
+                break;
+            }
+        }
+    }
+
+    Ok(Config {
+        options,
+        foreach_template: foreach_template.unwrap_or(Template::new("")),
+        additional_template: additional_template.unwrap_or(Template::new("")),
+    })
+}
