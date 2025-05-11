@@ -2,9 +2,8 @@ use serde::Deserialize;
 
 use std::{collections::HashMap, ffi::OsString, fmt::Debug, fs::File, io};
 
-use material_colors::scheme::Scheme;
-
 use crate::error::{ConfigError, Fallible};
+use crate::material_newtype::MattyScheme;
 
 use super::template::Template;
 use super::tokenizer::{ConfigToken, Token};
@@ -28,7 +27,7 @@ pub struct Config<'a> {
 }
 
 impl<'a> Config<'a> {
-    pub fn write(&self, scheme: Scheme, hashmap: &HashMap<String, String>) -> io::Result<()> {
+    pub fn write(&self, scheme: &MattyScheme, hashmap: &HashMap<String, String>) -> io::Result<()> {
         let mut file = File::create(self.options.outfile)?;
 
         self.foreach_template.run_with_scheme(&mut file, scheme)?;

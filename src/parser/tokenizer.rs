@@ -19,6 +19,7 @@ impl<'source> Token<'source> {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
+#[allow(dead_code)]
 pub enum ConfigToken<'a> {
     OptionCommand(Token<'a>),
     Id(Token<'a>),

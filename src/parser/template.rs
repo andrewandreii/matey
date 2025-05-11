@@ -3,7 +3,7 @@ use std::io;
 use std::iter::Peekable;
 use std::vec::Vec;
 
-use material_colors::scheme::Scheme;
+use crate::material_newtype::MattyScheme;
 
 #[derive(Debug)]
 pub enum TemplateToken<'a> {
@@ -87,7 +87,7 @@ impl<'a> Template<'a> {
         Ok(())
     }
 
-    pub fn run_with_scheme<W>(&self, writer: &mut W, scheme: Scheme) -> io::Result<()>
+    pub fn run_with_scheme<W>(&self, writer: &mut W, scheme: &MattyScheme) -> io::Result<()>
     where
         W: io::Write,
     {
