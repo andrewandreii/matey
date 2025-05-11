@@ -21,20 +21,35 @@ pub struct ConfigFile {
 }
 
 impl ConfigFile {
-    pub fn new(path: impl AsRef<Path>) -> io::Result<Self> {
-        let mut file = File::open(path.as_ref())?;
-        let mut buf = String::new();
-        file.read_to_string(&mut buf)?;
-
-        Ok(ConfigFile {
+    pub fn new(path: impl AsRef<Path>, source: String) -> Self {
+        ConfigFile {
             path: path.as_ref().to_path_buf().into_os_string(),
-            source: buf,
-        })
+            source,
+        }
     }
 
     pub fn parse_config(&self) -> Fallible<Config<'_>> {
         let tokens = parse_source(&self.source, self.path.clone())?;
 
         parse_tokens(tokens, self.path.clone())
+    }
+}
+
+mod test {
+    #[allow(unused_imports)]
+    use super::ConfigFile;
+
+    #[test]
+    fn test_template() {
+        let templates = [
+            "#out \"test.out\"\nforeach{{color}={name}}".to_string(),
+            "#out outfile\nforeach{}once{{image}}".to_string(),
+        ];
+        for template in templates {
+            let cfile = ConfigFile::new("test.path", template);
+            let config = cfile.parse_config();
+            println!("{:?}", config);
+            assert!(config.is_ok());
+        }
     }
 }

@@ -148,8 +148,11 @@ fn main() -> Result<(), Box<dyn Error>> {
         .chain(additional)
         .collect::<HashMap<String, String>>();
 
-    for file in template_files {
-        let config = ConfigFile::new(&file)?;
+    for path in template_files {
+        let mut file = File::open(&path)?;
+        let mut buf = String::new();
+        file.read_to_string(&mut buf)?;
+        let config = ConfigFile::new(&path, buf);
         let config = config.parse_config()?;
         config.write(&scheme, &hashmap)?;
     }

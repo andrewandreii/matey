@@ -57,15 +57,17 @@ pub fn parse_tokens<'a>(tokens: Vec<ConfigToken<'a>>, filename: OsString) -> Fal
             ConfigToken::OptionCommand(command) => match command.source {
                 "out" => {
                     iter.next();
-                    if let Some(ConfigToken::Id(outfile)) = iter.next() {
-                        options.outfile = outfile.source;
-                    } else {
-                        return parse_error(
-                            &filename,
-                            command,
-                            "expected id after command token".to_string(),
-                        )
-                        .into();
+                    match iter.next() {
+                        Some(ConfigToken::Id(outfile)) => options.outfile = outfile.source,
+                        Some(ConfigToken::Literal(outfile)) => options.outfile = outfile.source,
+                        _ => {
+                            return parse_error(
+                                &filename,
+                                command,
+                                "expected id after command token".to_string(),
+                            )
+                            .into();
+                        }
                     }
 
                     if iter.next_if(|tt| **tt == ConfigToken::Eof) == None {
@@ -133,6 +135,9 @@ pub fn parse_tokens<'a>(tokens: Vec<ConfigToken<'a>>, filename: OsString) -> Fal
             }
             ConfigToken::Eof => {
                 break;
+            }
+            ConfigToken::Literal(token) => {
+                return parse_error(&filename, token, "Unexpected string".to_string()).into();
             }
         }
     }

@@ -24,6 +24,7 @@ pub enum ConfigToken<'a> {
     OptionCommand(Token<'a>),
     Id(Token<'a>),
     Number(Token<'a>),
+    Literal(Token<'a>),
     TemplateBlock(Token<'a>),
     NewLine,
     Eof,
@@ -73,13 +74,56 @@ impl<'source> Tokenizer<'source> {
         };
 
         let mut end = start;
-        while let Some(_) = self.iter.next_if(|(_, c)| !c.is_whitespace()) {
+        while let Some(_) = self.iter.next_if(|(_, c)| c.is_alphanumeric()) {
             self.location.step();
             end += 1;
         }
 
         Ok(ConfigToken::Id(Token::new(
             &self.source[start..=end],
+            self.location,
+        )))
+    }
+
+    fn tokenize_literal(&mut self) -> Fallible<ConfigToken<'source>> {
+        let (start, is_double) = if let Ok(pos) = self.expect('"') {
+            (pos + 1, true)
+        } else {
+            (self.expect('\'')? + 1, false)
+        };
+
+        let mut end = start - 1;
+        while let Some((i, c)) = self.iter.next() {
+            match c {
+                '"' => {
+                    if !is_double {
+                        continue;
+                    }
+                    end = i;
+                    break;
+                }
+                '\'' => {
+                    if is_double {
+                        continue;
+                    }
+                    end = i;
+                    break;
+                }
+                '\n' => {
+                    return self
+                        .error("No matching quotes found for string".to_string())
+                        .into();
+                }
+                _ => continue,
+            }
+        }
+
+        if end < start {
+            return self.error("String doesn't end".to_string()).into();
+        }
+
+        Ok(ConfigToken::Id(Token::new(
+            &self.source[start..end],
             self.location,
         )))
     }
@@ -113,7 +157,7 @@ impl<'source> Tokenizer<'source> {
             }
         }
 
-        if end <= start {
+        if end < start {
             return self.error("No matching left brace".to_string()).into();
         }
 
@@ -135,6 +179,9 @@ impl<'source> Tokenizer<'source> {
                 '-' | '0'..'9' => {
                     todo!();
                 }
+                '"' | '\'' => {
+                    return Ok(self.tokenize_literal()?);
+                }
                 '\n' => {
                     self.location.nl();
                     self.iter.next();
@@ -144,8 +191,11 @@ impl<'source> Tokenizer<'source> {
                 c if c.is_whitespace() => {
                     self.iter.next();
                 }
-                _ => {
+                c if c.is_alphabetic() => {
                     return Ok(self.tokenize_id()?);
+                }
+                &c => {
+                    return self.error(format!("Unexpected token {}", c)).into();
                 }
             }
         }
