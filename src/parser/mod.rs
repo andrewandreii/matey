@@ -29,7 +29,7 @@ impl ConfigFile {
     }
 
     pub fn parse_config(&self) -> Fallible<Config<'_>> {
-        let tokens = parse_source(&self.source, self.path.clone())?;
+        let tokens = parse_source(&self.source, self.path.clone());
 
         parse_tokens(tokens, self.path.clone())
     }

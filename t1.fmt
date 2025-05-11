@@ -1,0 +1,9 @@
+#out "t1.out"
+
+foreach {
+${name} = rgba({color}ff)
+}
+
+once {
+image = {image}
+}

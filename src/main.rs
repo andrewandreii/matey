@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::error::Error;
 use std::ffi::OsString;
 use std::fmt::LowerHex;
-use std::path::PathBuf;
+use std::path::{PathBuf, absolute};
 use std::{env, fs::File, io::Read};
 use std::{fmt, fs};
 
@@ -26,7 +26,7 @@ impl<'a> LowerHex for HexSlice<'a> {
     }
 }
 
-fn try_load_from_config(template_files: &mut Vec<OsString>) -> Result<(), Box<dyn Error>> {
+fn try_load_from_config(template_files: &mut Vec<PathBuf>) -> Result<(), Box<dyn Error>> {
     let mut config_path = PathBuf::new();
 
     if let Ok(path) = env::var("XDG_CONFIG_HOME") {
@@ -40,7 +40,7 @@ fn try_load_from_config(template_files: &mut Vec<OsString>) -> Result<(), Box<dy
     fs::create_dir_all(&config_path)?;
 
     for entry in fs::read_dir(config_path)? {
-        template_files.push(entry?.path().into_os_string());
+        template_files.push(entry?.path());
     }
 
     Ok(())
@@ -49,7 +49,7 @@ fn try_load_from_config(template_files: &mut Vec<OsString>) -> Result<(), Box<dy
 fn main() -> Result<(), Box<dyn Error>> {
     let mut args = env::args().skip(1).peekable();
 
-    let mut template_files: Vec<OsString> = Vec::new();
+    let mut template_files: Vec<PathBuf> = Vec::new();
 
     if let Err(e) = try_load_from_config(&mut template_files) {
         println!("could not load templates form config: {}", e);
@@ -59,10 +59,12 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut cache_image = false;
     let mut use_cache = false;
     let mut is_dark = true;
+    let mut dry_run = false;
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "-i" => {
-                template_files.push(args.next().expect("-i requires an argument").into());
+                let path: PathBuf = args.next().expect("-i requires an argument").into();
+                template_files.push(absolute(path)?);
             }
             "-f" => {
                 file_string = Some(args.next().expect("-f requires an argument"));
@@ -80,6 +82,9 @@ fn main() -> Result<(), Box<dyn Error>> {
             "-l" => {
                 is_dark = false;
             }
+            "--dry-run" => {
+                dry_run = true;
+            }
             other => {
                 panic!("Unknown option {}", other);
             }
@@ -92,54 +97,55 @@ fn main() -> Result<(), Box<dyn Error>> {
         panic!("Please provide an image with -f");
     };
 
-    let mut file = File::open(&file_string)?;
+    let mut file = File::open(&file_string).expect("Could not open image file");
     let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer)?;
+    file.read_to_end(&mut buffer)
+        .expect("Could not read image file");
 
     let mut cache_folder = PathBuf::new();
     let mut cache_img = PathBuf::new();
     if use_cache || cache_image {
-        let home = env::var("HOME")?;
+        let home = env::var("HOME").expect("HOME environmental variable not found");
         cache_folder.push(home);
         cache_folder.push(".cache/matty");
-        fs::create_dir_all(&cache_folder)?;
+        fs::create_dir_all(&cache_folder).expect("Could not create cache folder");
 
         let digest = Some(Sha256::digest(&buffer));
         cache_img = cache_folder.clone();
         cache_img.push(format!("{:x}", HexSlice(digest.unwrap().as_slice())));
     }
 
-    let compute_theme = || -> Result<Scheme, Box<dyn Error>> {
-        let mut image = ImageReader::read(&buffer)?;
+    let compute_theme = || -> Scheme {
+        let mut image = ImageReader::read(&buffer).expect("Could not parse image");
         image.resize(128, 128, material_colors::image::FilterType::Lanczos3);
         let theme = ThemeBuilder::with_source(ImageReader::extract_color(&image)).build();
-        Ok(if is_dark {
+        if is_dark {
             theme.schemes.dark
         } else {
             theme.schemes.light
-        })
+        }
     };
 
     let scheme: MattyScheme = match (use_cache, File::open(&cache_img)) {
-        (false, _) => compute_theme()?.into(),
+        (false, _) => compute_theme().into(),
         (true, Ok(file)) => serde_json::from_reader(file)?,
         (true, Err(_)) => {
             use_cache = false;
             if !cache_image {
                 println!("warning: cache for image not found, run with -c to generate");
             }
-            compute_theme()?.into()
+            compute_theme().into()
         }
     };
 
     if cache_image && !use_cache {
-        let cache_file = File::create(cache_img)?;
-        serde_json::to_writer(cache_file, &scheme)?;
+        let cache_file = File::create(cache_img).expect("Could not create cache file");
+        serde_json::to_writer(cache_file, &scheme).expect("Could not write cache");
     }
 
     cache_folder.push("output");
-    fs::create_dir_all(&cache_folder)?;
-    env::set_current_dir(cache_folder)?;
+    fs::create_dir_all(&cache_folder).expect("Could not create output folder");
+    env::set_current_dir(cache_folder).expect("Could not change directory to cache folder");
 
     let additional = [("image".to_string(), file_string.clone())];
     let hashmap = (&scheme)
@@ -149,12 +155,15 @@ fn main() -> Result<(), Box<dyn Error>> {
         .collect::<HashMap<String, String>>();
 
     for path in template_files {
-        let mut file = File::open(&path)?;
+        let mut file = File::open(&path).expect("Could not open template file");
         let mut buf = String::new();
-        file.read_to_string(&mut buf)?;
+        file.read_to_string(&mut buf)
+            .expect("Could not read template file");
         let config = ConfigFile::new(&path, buf);
         let config = config.parse_config()?;
-        config.write(&scheme, &hashmap)?;
+        if !dry_run {
+            config.write(&scheme, &hashmap)?;
+        }
     }
 
     Ok(())

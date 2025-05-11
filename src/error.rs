@@ -5,7 +5,7 @@ use std::{
 
 pub type Fallible<T> = Result<T, ConfigError>;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ConfigError {
     ParseError(String),
     TokenizingError(String),

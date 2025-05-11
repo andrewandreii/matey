@@ -6,7 +6,7 @@ use std::ffi::OsString;
 use std::iter::Peekable;
 use std::str::CharIndices;
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct Token<'a> {
     pub source: &'a str,
     pub location: FileLocation,
@@ -18,7 +18,7 @@ impl<'source> Token<'source> {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 #[allow(dead_code)]
 pub enum ConfigToken<'a> {
     OptionCommand(Token<'a>),
@@ -220,20 +220,21 @@ impl<'source> Tokenizer<'source> {
     }
 }
 
+impl<'a> Iterator for Tokenizer<'a> {
+    type Item = Fallible<ConfigToken<'a>>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.tokenize_next() {
+            Ok(ConfigToken::Eof) => None,
+            Ok(token) => Some(Ok(token)),
+            Err(e) => Some(Err(e)),
+        }
+    }
+}
+
 pub fn parse_source<'source, 'other>(
     source: &'source str,
     path: OsString,
-) -> Fallible<Vec<ConfigToken<'source>>> {
-    let mut tokens = Vec::with_capacity(100);
-
-    let mut tokenizer = Tokenizer::new(source, path);
-
-    loop {
-        match tokenizer.tokenize_next()? {
-            ConfigToken::Eof => break,
-            token => tokens.push(token),
-        }
-    }
-
-    Ok(tokens)
+) -> impl IntoIterator<Item = Fallible<ConfigToken<'source>>> {
+    Tokenizer::new(source, path)
 }

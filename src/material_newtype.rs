@@ -87,7 +87,7 @@ macro_rules! sametype {
 sametype!(
     #[same_as = Argb]
     #[field_type = u8]
-    #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+    #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Default)]
     pub struct MattyArgb {
         pub alpha,
         pub red,
@@ -106,7 +106,7 @@ sametype!(
     #[iter]
     #[same_as = Scheme]
     #[field_type = MattyArgb]
-    #[derive(Serialize, Deserialize, Debug, Clone)]
+    #[derive(Serialize, Deserialize, Debug, Clone, Default)]
     pub struct MattyScheme {
         pub primary,
         pub on_primary,

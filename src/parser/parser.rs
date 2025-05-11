@@ -46,44 +46,64 @@ fn parse_error(filename: &OsString, token: &Token, message: String) -> ConfigErr
     ))
 }
 
-pub fn parse_tokens<'a>(tokens: Vec<ConfigToken<'a>>, filename: OsString) -> Fallible<Config<'a>> {
-    let mut iter = tokens.iter().peekable();
+pub fn parse_tokens<'a, I>(tokens: I, filename: OsString) -> Fallible<Config<'a>>
+where
+    I: IntoIterator<Item = Fallible<ConfigToken<'a>>>,
+{
+    let mut iter = tokens.into_iter().peekable();
 
     let mut options = ConfigOptions::new("default.conf");
     let mut foreach_template: Option<Template<'a>> = None;
     let mut additional_template: Option<Template<'a>> = None;
     while let Some(token) = iter.peek() {
+        let token = match token {
+            Ok(token) => *token,
+            Err(e) => return Err(e.clone()),
+        };
+
         match token {
             ConfigToken::OptionCommand(command) => match command.source {
                 "out" => {
                     iter.next();
                     match iter.next() {
-                        Some(ConfigToken::Id(outfile)) => options.outfile = outfile.source,
-                        Some(ConfigToken::Literal(outfile)) => options.outfile = outfile.source,
+                        Some(Ok(ConfigToken::Id(outfile))) => options.outfile = outfile.source,
+                        Some(Ok(ConfigToken::Literal(outfile))) => options.outfile = outfile.source,
                         _ => {
                             return parse_error(
                                 &filename,
-                                command,
+                                &command,
                                 "expected id after command token".to_string(),
                             )
                             .into();
                         }
                     }
 
-                    if iter.next_if(|tt| **tt == ConfigToken::Eof) == None {
-                        if iter.next_if(|tt| **tt == ConfigToken::NewLine) == None {
+                    if iter
+                        .next_if(|tt| tt.is_ok() && *tt.as_ref().unwrap() == ConfigToken::Eof)
+                        .is_none()
+                    {
+                        if iter
+                            .next_if(|tt| {
+                                tt.is_ok() && *tt.as_ref().unwrap() == ConfigToken::NewLine
+                            })
+                            .is_none()
+                        {
                             return parse_error(
                                 &filename,
-                                command,
-                                "expected newline after command".to_string(),
+                                &command,
+                                format!("expected newline after command got {:?}", iter.next()),
                             )
                             .into();
                         }
                     }
                 }
                 unknown => {
-                    return parse_error(&filename, command, format!("unknown command {}", unknown))
-                        .into();
+                    return parse_error(
+                        &filename,
+                        &command,
+                        format!("unknown command {}", unknown),
+                    )
+                    .into();
                 }
             },
             ConfigToken::Id(name) => {
@@ -94,17 +114,24 @@ pub fn parse_tokens<'a>(tokens: Vec<ConfigToken<'a>>, filename: OsString) -> Fal
                     _ => {
                         return parse_error(
                             &filename,
-                            name,
+                            &name,
                             format!("unsupported template type {}", name.source),
                         )
                         .into();
                     }
                 };
 
-                let next = if let Some(next) = iter.next() {
-                    next
-                } else {
-                    unreachable!()
+                let next = match iter.next() {
+                    Some(Ok(next)) => next,
+                    Some(Err(e)) => return Err(e),
+                    None => {
+                        return parse_error(
+                            &filename,
+                            &name,
+                            format!("expected template after id {}", name.source),
+                        )
+                        .into();
+                    }
                 };
 
                 match next {
@@ -114,7 +141,7 @@ pub fn parse_tokens<'a>(tokens: Vec<ConfigToken<'a>>, filename: OsString) -> Fal
                     _ => {
                         return parse_error(
                             &filename,
-                            name,
+                            &name,
                             "expected template after id".to_string(),
                         )
                         .into();
@@ -125,7 +152,7 @@ pub fn parse_tokens<'a>(tokens: Vec<ConfigToken<'a>>, filename: OsString) -> Fal
             ConfigToken::TemplateBlock(token) => {
                 return parse_error(
                     &filename,
-                    token,
+                    &token,
                     "Unnamed templates aren't allowed".to_string(),
                 )
                 .into();
@@ -137,7 +164,7 @@ pub fn parse_tokens<'a>(tokens: Vec<ConfigToken<'a>>, filename: OsString) -> Fal
                 break;
             }
             ConfigToken::Literal(token) => {
-                return parse_error(&filename, token, "Unexpected string".to_string()).into();
+                return parse_error(&filename, &token, "Unexpected string".to_string()).into();
             }
         }
     }
