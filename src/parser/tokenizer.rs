@@ -1,4 +1,4 @@
-use crate::error::{ConfigError, Fallible};
+use crate::error::{Error, Fallible};
 
 use super::common::FileLocation;
 
@@ -211,8 +211,8 @@ impl<'source> Tokenizer<'source> {
         }
     }
 
-    fn error(&self, reason: String) -> ConfigError {
-        ConfigError::tokenizing_error(format!("({}) {}", self.location(), reason))
+    fn error(&self, reason: String) -> Error {
+        Error::tokenizing_error(format!("({}) {}", self.location(), reason))
     }
 
     fn location(&self) -> String {

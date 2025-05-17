@@ -3,12 +3,7 @@ mod parser;
 mod template;
 mod tokenizer;
 
-use std::{
-    ffi::OsString,
-    fs::File,
-    io::{self, Read},
-    path::Path,
-};
+use std::{ffi::OsString, path::Path};
 
 use parser::{Config, parse_tokens};
 use tokenizer::parse_source;

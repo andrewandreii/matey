@@ -1,14 +1,12 @@
-use serde::Deserialize;
-
 use std::{collections::HashMap, ffi::OsString, fmt::Debug, fs::File, io};
 
-use crate::error::{ConfigError, Fallible};
+use crate::error::{Error, Fallible};
 use crate::material_newtype::MattyScheme;
 
 use super::template::Template;
 use super::tokenizer::{ConfigToken, Token};
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug)]
 pub struct ConfigOptions<'a> {
     pub outfile: &'a str,
 }
@@ -39,8 +37,8 @@ impl<'a> Config<'a> {
     }
 }
 
-fn parse_error(filename: &OsString, token: &Token, message: String) -> ConfigError {
-    ConfigError::parse_error(format!(
+fn parse_error(filename: &OsString, token: &Token, message: String) -> Error {
+    Error::parse_error(format!(
         "({:#?} at {}) {}",
         filename, token.location, message
     ))

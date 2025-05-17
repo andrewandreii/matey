@@ -1,6 +1,5 @@
 use material_colors::color::Argb;
 use material_colors::scheme::Scheme;
-use serde::{Deserialize, Serialize};
 
 macro_rules! count {
     () => (0usize);
@@ -87,7 +86,8 @@ macro_rules! sametype {
 sametype!(
     #[same_as = Argb]
     #[field_type = u8]
-    #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Default)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+    #[repr(C)]
     pub struct MattyArgb {
         pub alpha,
         pub red,
@@ -98,7 +98,7 @@ sametype!(
 
 impl MattyArgb {
     pub fn to_hex(&self) -> String {
-        format!("{:X}{:X}{:X}", self.red, self.green, self.blue)
+        format!("{:02X}{:02X}{:02X}", self.red, self.green, self.blue)
     }
 }
 
@@ -106,7 +106,8 @@ sametype!(
     #[iter]
     #[same_as = Scheme]
     #[field_type = MattyArgb]
-    #[derive(Serialize, Deserialize, Debug, Clone, Default)]
+    #[derive(Debug, Clone, Copy, Default)]
+    #[repr(C)]
     pub struct MattyScheme {
         pub primary,
         pub on_primary,
@@ -159,3 +160,16 @@ sametype!(
         pub scrim,
     }
 );
+
+#[derive(Debug, Clone)]
+#[repr(C)]
+pub struct MattyTheme {
+    pub light: MattyScheme,
+    pub dark: MattyScheme,
+}
+
+impl MattyTheme {
+    pub fn new(light: MattyScheme, dark: MattyScheme) -> Self {
+        MattyTheme { light, dark }
+    }
+}
