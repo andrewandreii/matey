@@ -6,32 +6,65 @@ use crate::material_newtype::MattyScheme;
 use super::template::Template;
 use super::tokenizer::{ConfigToken, Token};
 
-#[derive(Debug)]
-pub struct ConfigOptions<'a> {
-    pub outfile: &'a str,
+pub struct ConfigBuilder<'a> {
+    outfile: &'a str,
+    templates: Vec<ConfigTemplate<'a>>,
 }
 
-impl<'a> ConfigOptions<'a> {
-    pub fn new(outfile: &'a str) -> Self {
-        ConfigOptions { outfile }
+impl<'a> ConfigBuilder<'a> {
+    pub fn new<'b: 'a>(outfile: &'b str) -> Self {
+        ConfigBuilder {
+            outfile,
+            templates: Vec::new(),
+        }
+    }
+
+    pub fn add_foreach_template<'b: 'a>(&mut self, template: Template<'b>) {
+        self.templates.push(ConfigTemplate::Foreach(template));
+    }
+
+    pub fn add_norm_template<'b: 'a>(&mut self, template: Template<'b>) {
+        self.templates.push(ConfigTemplate::Norm(template));
+    }
+
+    pub fn set_outfile<'b: 'a>(&mut self, outfile: &'b str) {
+        self.outfile = outfile;
+    }
+
+    pub fn build(self) -> Config<'a> {
+        Config {
+            outfile: self.outfile,
+            templates: self.templates,
+        }
     }
 }
 
 #[derive(Debug)]
+enum ConfigTemplate<'a> {
+    Foreach(Template<'a>),
+    Norm(Template<'a>),
+}
+
+#[derive(Debug)]
 pub struct Config<'a> {
-    options: ConfigOptions<'a>,
-    foreach_template: Template<'a>,
-    additional_template: Template<'a>,
+    outfile: &'a str,
+    templates: Vec<ConfigTemplate<'a>>,
 }
 
 impl<'a> Config<'a> {
     pub fn write(&self, scheme: &MattyScheme, hashmap: &HashMap<String, String>) -> io::Result<()> {
-        let mut file = File::create(self.options.outfile)?;
+        let mut file = File::create(self.outfile)?;
 
-        self.foreach_template.run_with_scheme(&mut file, scheme)?;
-
-        self.additional_template
-            .run_with_hashmap(&mut file, &hashmap)?;
+        for template in &self.templates {
+            match template {
+                ConfigTemplate::Norm(template) => {
+                    template.run_with_hashmap(&mut file, hashmap)?;
+                }
+                ConfigTemplate::Foreach(template) => {
+                    template.run_with_scheme(&mut file, scheme)?;
+                }
+            }
+        }
 
         Ok(())
     }
@@ -50,9 +83,7 @@ where
 {
     let mut iter = tokens.into_iter().peekable();
 
-    let mut options = ConfigOptions::new("default.conf");
-    let mut foreach_template: Option<Template<'a>> = None;
-    let mut additional_template: Option<Template<'a>> = None;
+    let mut config_builder = ConfigBuilder::new("default.conf");
     while let Some(token) = iter.peek() {
         let token = match token {
             Ok(token) => *token,
@@ -64,8 +95,12 @@ where
                 "out" => {
                     iter.next();
                     match iter.next() {
-                        Some(Ok(ConfigToken::Id(outfile))) => options.outfile = outfile.source,
-                        Some(Ok(ConfigToken::Literal(outfile))) => options.outfile = outfile.source,
+                        Some(Ok(ConfigToken::Id(outfile))) => {
+                            config_builder.set_outfile(outfile.source)
+                        }
+                        Some(Ok(ConfigToken::Literal(outfile))) => {
+                            config_builder.set_outfile(outfile.source)
+                        }
                         _ => {
                             return parse_error(
                                 &filename,
@@ -106,23 +141,11 @@ where
             },
             ConfigToken::Id(name) => {
                 iter.next();
-                let template_ref = match name.source {
-                    "foreach" => &mut foreach_template,
-                    "once" => &mut additional_template,
-                    _ => {
-                        return parse_error(
-                            &filename,
-                            &name,
-                            format!("unsupported template type {}", name.source),
-                        )
-                        .into();
-                    }
-                };
 
-                let next = match iter.next() {
-                    Some(Ok(next)) => next,
+                let template = match iter.next() {
+                    Some(Ok(ConfigToken::TemplateBlock(template))) => template,
                     Some(Err(e)) => return Err(e),
-                    None => {
+                    None | Some(Ok(_)) => {
                         return parse_error(
                             &filename,
                             &name,
@@ -132,15 +155,16 @@ where
                     }
                 };
 
-                match next {
-                    ConfigToken::TemplateBlock(template) => {
-                        *template_ref = Some(Template::new(template.source));
+                match name.source {
+                    "foreach" => {
+                        config_builder.add_foreach_template(Template::new(template.source))
                     }
+                    "norm" => config_builder.add_norm_template(Template::new(template.source)),
                     _ => {
                         return parse_error(
                             &filename,
                             &name,
-                            "expected template after id".to_string(),
+                            format!("unsupported template type {}", name.source),
                         )
                         .into();
                     }
@@ -167,9 +191,5 @@ where
         }
     }
 
-    Ok(Config {
-        options,
-        foreach_template: foreach_template.unwrap_or(Template::new("")),
-        additional_template: additional_template.unwrap_or(Template::new("")),
-    })
+    Ok(config_builder.build())
 }

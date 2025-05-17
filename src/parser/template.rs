@@ -18,7 +18,7 @@ pub struct Template<'a> {
 
 fn peekable_next_until<T: Iterator>(
     iter: &mut Peekable<T>,
-    cond: impl Fn(&T::Item) -> bool,
+    mut cond: impl FnMut(&T::Item) -> bool,
 ) -> T::Item {
     let mut opt_item = iter.next();
     while let Some(item) = opt_item {
@@ -42,17 +42,27 @@ impl<'a> Template<'a> {
     pub fn new(template: &'a str) -> Self {
         let mut tokens = Vec::new();
         let mut iter = template.char_indices().peekable();
+        let mut escaped = false;
         while let Some((i, c)) = iter.peek() {
             match c {
-                '{' => {
+                '{' if !escaped => {
                     let start = *i + 1;
                     let (end, _) = peekable_next_until(&mut iter, |(_, c)| *c == '}');
                     iter.next();
                     tokens.push(TemplateToken::Key(template[start..=end].trim()));
                 }
+                '\\' => {
+                    escaped = true;
+                    iter.next();
+                }
                 _ => {
                     let start = *i;
-                    let (end, _) = peekable_next_until(&mut iter, |(_, c)| *c == '{');
+
+                    let (end, _) = peekable_next_until(&mut iter, |(_, c)| {
+                        return *c == '{' || *c == '\\';
+                    });
+                    escaped = false;
+
                     tokens.push(TemplateToken::RawString(&template[start..=end]));
                 }
             }

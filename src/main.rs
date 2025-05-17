@@ -121,9 +121,17 @@ fn main() -> Result<(), Box<dyn Error>> {
         file.read_to_string(&mut buf)
             .expect("Could not read template file");
         let config = ConfigFile::new(&path, buf);
-        let config = config.parse_config()?;
+        let config = match config.parse_config() {
+            Ok(config) => config,
+            Err(e) => {
+                println!("encountered error while parsing template: {e}");
+                continue;
+            }
+        };
         if !dry_run {
-            config.write(theme, &hashmap)?;
+            config
+                .write(theme, &hashmap)
+                .expect("Could not write template");
         }
     }
 
