@@ -7,9 +7,8 @@ use std::{env, fs::File, io::Read};
 use material_colors::{image::ImageReader, theme::ThemeBuilder};
 
 use matty::cache::Cacher;
-use matty::parser::ConfigFile;
-
 use matty::material_newtype::MattyTheme;
+use matty::parser::parse_config;
 
 fn try_load_from_config(template_files: &mut Vec<PathBuf>) -> Result<(), Box<dyn Error>> {
     let mut config_path = PathBuf::new();
@@ -120,8 +119,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         let mut buf = String::new();
         file.read_to_string(&mut buf)
             .expect("Could not read template file");
-        let config = ConfigFile::new(&path, buf);
-        let config = match config.parse_config() {
+        let config = match parse_config(&path, &buf) {
             Ok(config) => config,
             Err(e) => {
                 println!("encountered error while parsing template: {e}");

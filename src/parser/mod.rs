@@ -1,48 +1,35 @@
 mod common;
+mod config;
 mod parser;
 mod template;
 mod tokenizer;
 
-use std::{ffi::OsString, path::Path};
+use std::path::Path;
 
-use parser::{Config, parse_tokens};
+use config::Config;
+use parser::parse_tokens;
 use tokenizer::parse_source;
 
 use crate::error::Fallible;
 
-pub struct ConfigFile {
-    path: OsString,
-    source: String,
-}
+pub fn parse_config<'a>(path: impl AsRef<Path>, source: &'a str) -> Fallible<Config<'a>> {
+    let tokens = parse_source(&source, path.as_ref().into());
 
-impl ConfigFile {
-    pub fn new(path: impl AsRef<Path>, source: String) -> Self {
-        ConfigFile {
-            path: path.as_ref().to_path_buf().into_os_string(),
-            source,
-        }
-    }
-
-    pub fn parse_config(&self) -> Fallible<Config<'_>> {
-        let tokens = parse_source(&self.source, self.path.clone());
-
-        parse_tokens(tokens, self.path.clone())
-    }
+    parse_tokens(tokens, path.as_ref().into())
 }
 
 mod test {
     #[allow(unused_imports)]
-    use super::ConfigFile;
+    use crate::parser::parse_config;
 
     #[test]
     fn test_template() {
         let templates = [
             "#out \"test.out\"\nforeach{{color}={name}}".to_string(),
-            "#out outfile\nforeach{}once{{image}}".to_string(),
+            "#out outfile\nforeach{}norm{{image}}".to_string(),
         ];
         for template in templates {
-            let cfile = ConfigFile::new("test.path", template);
-            let config = cfile.parse_config();
+            let config = parse_config("test.path", &template);
             println!("{:?}", config);
             assert!(config.is_ok());
         }
