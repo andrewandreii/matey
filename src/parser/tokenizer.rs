@@ -122,7 +122,7 @@ impl<'source> Tokenizer<'source> {
 			return self.error("String doesn't end".to_string()).into();
 		}
 
-		Ok(ConfigToken::Id(Token::new(
+		Ok(ConfigToken::Literal(Token::new(
 			&self.source[start..end],
 			self.location,
 		)))

@@ -5,8 +5,11 @@ use std::io;
 use crate::material_newtype::MattyScheme;
 use crate::parser::template::Template;
 
+use super::common::RenamingScheme;
+
 pub struct ConfigBuilder<'a> {
 	outfile: &'a str,
+	naming: RenamingScheme,
 	templates: Vec<ConfigTemplate<'a>>,
 }
 
@@ -14,6 +17,7 @@ impl<'a> ConfigBuilder<'a> {
 	pub fn new<'b: 'a>(outfile: &'b str) -> Self {
 		ConfigBuilder {
 			outfile,
+			naming: RenamingScheme::DashCase,
 			templates: Vec::new(),
 		}
 	}
@@ -30,9 +34,27 @@ impl<'a> ConfigBuilder<'a> {
 		self.outfile = outfile;
 	}
 
+	pub fn set_naming<'b: 'a>(&mut self, naming: &'b str) {
+		use RenamingScheme::*;
+		self.naming = match naming {
+			"snake_case" => SnakeCase,
+			"UPPERCASE" => UpperCase,
+			"UPPER_CASE" | "UPPER_SNAKE_CASE" => UpperSnakeCase,
+			"dash-case" => DashCase,
+			"camelCase" => CamelCase,
+			"CamelCase" | "UpperCamelCase" => UpperCamelCase,
+			"lowercase" | "flatcase" => FlatCase,
+			_ => {
+				println!("warning: unknown naming convention");
+				DashCase
+			}
+		};
+	}
+
 	pub fn build(self) -> Config<'a> {
 		Config {
 			outfile: self.outfile,
+			rename: self.naming,
 			templates: self.templates,
 		}
 	}
@@ -47,6 +69,7 @@ enum ConfigTemplate<'a> {
 #[derive(Debug)]
 pub struct Config<'a> {
 	outfile: &'a str,
+	rename: RenamingScheme,
 	templates: Vec<ConfigTemplate<'a>>,
 }
 
@@ -60,7 +83,7 @@ impl<'a> Config<'a> {
 					template.run_with_hashmap(&mut file, hashmap)?;
 				}
 				ConfigTemplate::Foreach(template) => {
-					template.run_with_scheme(&mut file, scheme)?;
+					template.run_with_scheme(&mut file, scheme, self.rename)?;
 				}
 			}
 		}

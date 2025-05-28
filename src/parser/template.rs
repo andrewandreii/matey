@@ -5,6 +5,8 @@ use std::vec::Vec;
 
 use crate::material_newtype::MattyScheme;
 
+use super::common::{RenamingScheme, rename_from_snake_case};
+
 #[derive(Debug)]
 pub enum TemplateToken<'a> {
 	RawString(&'a str),
@@ -97,7 +99,12 @@ impl<'a> Template<'a> {
 		Ok(())
 	}
 
-	pub fn run_with_scheme<W>(&self, writer: &mut W, scheme: &MattyScheme) -> io::Result<()>
+	pub fn run_with_scheme<W>(
+		&self,
+		writer: &mut W,
+		scheme: &MattyScheme,
+		rename: RenamingScheme,
+	) -> io::Result<()>
 	where
 		W: io::Write,
 	{
@@ -109,7 +116,7 @@ impl<'a> Template<'a> {
 					}
 					TemplateToken::Key(key) => match *key {
 						"name" => {
-							writer.write(name.as_bytes())?;
+							writer.write(rename_from_snake_case(name, rename).as_bytes())?;
 						}
 						"color" => {
 							writer.write(color.to_hex().as_bytes())?;

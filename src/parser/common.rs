@@ -26,3 +26,59 @@ impl fmt::Display for FileLocation {
 		write!(f, "line: {}, col: {}", self.line, self.column)
 	}
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RenamingScheme {
+	SnakeCase,
+	DashCase,
+	CamelCase,
+	UpperCase,
+	UpperSnakeCase,
+	UpperCamelCase,
+	FlatCase,
+}
+
+fn from_snake(s: &str, make_first_upper: bool) -> String {
+	if s.is_empty() {
+		return String::new();
+	}
+
+	let mut fin = String::with_capacity(s.len());
+
+	let mut chunks = s.split('_').filter(|s| !s.is_empty());
+	if !make_first_upper {
+		if let Some(s) = chunks.next() {
+			fin.push_str(s);
+		}
+	}
+
+	for chunk in chunks {
+		fin.push(chunk.chars().nth(0).unwrap().to_ascii_uppercase());
+		fin.push_str(&chunk[1..]);
+	}
+
+	fin
+}
+
+pub fn rename_from_snake_case<S: AsRef<str>>(s: S, renaming: RenamingScheme) -> String {
+	use RenamingScheme::*;
+	match renaming {
+		DashCase => s.as_ref().replace("_", "-"),
+		SnakeCase => s.as_ref().to_owned(),
+		UpperCase => s
+			.as_ref()
+			.chars()
+			.filter_map(|c| {
+				if c == '_' {
+					None
+				} else {
+					Some(c.to_ascii_uppercase())
+				}
+			})
+			.collect(),
+		UpperSnakeCase => s.as_ref().to_uppercase(),
+		FlatCase => s.as_ref().replace("_", ""),
+		CamelCase => from_snake(s.as_ref(), false),
+		UpperCamelCase => from_snake(s.as_ref(), true),
+	}
+}

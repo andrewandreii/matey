@@ -46,6 +46,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 	let mut use_cache = false;
 	let mut is_dark = true;
 	let mut dry_run = false;
+	let mut no_configs = false;
 	while let Some(arg) = args.next() {
 		match arg.as_str() {
 			"-i" => {
@@ -61,6 +62,9 @@ fn main() -> Result<(), Box<dyn Error>> {
 			"-l" => {
 				is_dark = false;
 			}
+			"--no-configs" => {
+				no_configs = true;
+			}
 			"--dry-run" => {
 				dry_run = true;
 			}
@@ -70,8 +74,10 @@ fn main() -> Result<(), Box<dyn Error>> {
 		}
 	}
 
-	if let Err(e) = try_load_from_config(&mut template_files) {
-		println!("could not load templates form config: {}", e);
+	if !no_configs {
+		if let Err(e) = try_load_from_config(&mut template_files) {
+			println!("could not load templates form config: {}", e);
+		}
 	}
 
 	let image_path = if let Some(file) = image_path {
