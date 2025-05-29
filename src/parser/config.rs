@@ -2,10 +2,11 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io;
 
-use crate::material_newtype::MattyScheme;
-use crate::parser::template::Template;
-
 use super::common::RenamingScheme;
+
+use crate::material_newtype::MattyScheme;
+use crate::parser::template::IndexableVariable;
+use crate::parser::template::Template;
 
 pub struct ConfigBuilder<'a> {
 	outfile: &'a str,
@@ -74,7 +75,11 @@ pub struct Config<'a> {
 }
 
 impl<'a> Config<'a> {
-	pub fn write(&self, scheme: &MattyScheme, hashmap: &HashMap<String, String>) -> io::Result<()> {
+	pub fn write(
+		&self,
+		scheme: &MattyScheme,
+		hashmap: &HashMap<String, IndexableVariable>,
+	) -> io::Result<()> {
 		let mut file = File::create(self.outfile)?;
 
 		for template in &self.templates {

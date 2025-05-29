@@ -12,6 +12,8 @@ use tokenizer::parse_source;
 
 use crate::error::Fallible;
 
+pub use template::{CharIndex, IndexableVariable};
+
 pub fn parse_config<'a>(path: impl AsRef<Path>, source: &'a str) -> Fallible<Config<'a>> {
 	let tokens = parse_source(&source, path.as_ref().into());
 

@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::error::Error;
 use std::fs;
 use std::path::{PathBuf, absolute};
@@ -8,6 +7,7 @@ use material_colors::{image::ImageReader, theme::ThemeBuilder};
 
 use matty::cache::Cacher;
 use matty::material_newtype::MattyTheme;
+use matty::parser::IndexableVariable;
 use matty::parser::parse_config;
 
 fn try_load_from_config(template_files: &mut Vec<PathBuf>) -> Result<(), Box<dyn Error>> {
@@ -113,12 +113,16 @@ fn main() -> Result<(), Box<dyn Error>> {
 
 	let theme = if is_dark { &scheme.dark } else { &scheme.light };
 
-	let additional = [("image".to_string(), image_path.clone())];
+	let additional = [(
+		"image".to_string(),
+		IndexableVariable::plain(image_path.clone()),
+	)];
+
 	let hashmap = (theme)
 		.into_iter()
-		.map(|(key, color)| (key.to_string(), color.to_hex()))
+		.map::<(String, IndexableVariable), _>(|(key, color)| (key.to_string(), (*color).into()))
 		.chain(additional)
-		.collect::<HashMap<String, String>>();
+		.collect();
 
 	for path in template_files {
 		let mut file = File::open(&path).expect("Could not open template file");

@@ -3,14 +3,16 @@ use std::io;
 use std::iter::Peekable;
 use std::vec::Vec;
 
-use crate::material_newtype::MattyScheme;
+use super::indexable::{CharIndex, IndexableVariable};
 
-use super::common::{RenamingScheme, rename_from_snake_case};
+use crate::material_newtype::MattyScheme;
+use crate::parser::common::{RenamingScheme, rename_from_snake_case};
 
 #[derive(Debug)]
 pub enum TemplateToken<'a> {
 	RawString(&'a str),
 	Key(&'a str),
+	IndexedKey(&'a str, &'a str),
 }
 
 #[derive(Debug)]
@@ -51,7 +53,12 @@ impl<'a> Template<'a> {
 					let start = *i + 1;
 					let (end, _) = peekable_next_until(&mut iter, |(_, c)| *c == '}');
 					iter.next();
-					tokens.push(TemplateToken::Key(template[start..=end].trim()));
+					let whole = &template[start..=end].trim();
+					if let Some(idx) = whole.find('.') {
+						tokens.push(TemplateToken::IndexedKey(&whole[..idx], &whole[idx + 1..]));
+					} else {
+						tokens.push(TemplateToken::Key(whole));
+					}
 				}
 				'\\' => {
 					escaped = true;
@@ -76,7 +83,7 @@ impl<'a> Template<'a> {
 	pub fn run_with_hashmap<W>(
 		&self,
 		writer: &mut W,
-		hashmap: &HashMap<String, String>,
+		hashmap: &HashMap<String, IndexableVariable>,
 	) -> io::Result<()>
 	where
 		W: io::Write,
@@ -88,7 +95,14 @@ impl<'a> Template<'a> {
 				}
 				TemplateToken::Key(key) => {
 					if let Some(value) = hashmap.get(*key) {
-						writer.write(value.as_bytes())?;
+						writer.write(value.get_all().as_bytes())?;
+					} else {
+						println!("warning: key not found {}", key);
+					}
+				}
+				TemplateToken::IndexedKey(key, indexes) => {
+					if let Some(value) = hashmap.get(*key) {
+						write_indexed(writer, value, indexes)?;
 					} else {
 						println!("warning: key not found {}", key);
 					}
@@ -125,10 +139,34 @@ impl<'a> Template<'a> {
 							println!("warning: unknown key in template {}", key);
 						}
 					},
+					TemplateToken::IndexedKey(key, indexes) => match *key {
+						"color" => {
+							write_indexed(writer, color, indexes)?;
+						}
+						key => {
+							println!("warning: key {} cannot be indexed", key);
+						}
+					},
 				}
 			}
 		}
 
 		Ok(())
 	}
+}
+
+fn write_indexed<W, I>(writer: &mut W, value: I, indexes: &str) -> io::Result<()>
+where
+	W: io::Write,
+	I: CharIndex<ElementType = String>,
+{
+	for index in indexes.chars() {
+		if let Some(v) = value.get(index) {
+			writer.write(v.as_bytes())?;
+		} else {
+			println!("warning: index {} for key not found", index);
+		}
+	}
+
+	Ok(())
 }
