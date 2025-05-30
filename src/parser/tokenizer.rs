@@ -1,6 +1,7 @@
 use crate::error::{Error, Fallible};
 
 use super::common::FileLocation;
+use super::template::Template;
 
 use std::ffi::OsString;
 use std::iter::Peekable;
@@ -92,6 +93,7 @@ impl<'source> Tokenizer<'source> {
 			(self.expect('\'')? + 1, false)
 		};
 
+		let mut is_template = false;
 		let mut end = start - 1;
 		while let Some((i, c)) = self.iter.next() {
 			match c {
@@ -114,6 +116,9 @@ impl<'source> Tokenizer<'source> {
 						.error("No matching quotes found for string".to_string())
 						.into();
 				}
+				'{' => {
+					is_template = true;
+				}
 				_ => continue,
 			}
 		}
@@ -122,10 +127,17 @@ impl<'source> Tokenizer<'source> {
 			return self.error("String doesn't end".to_string()).into();
 		}
 
-		Ok(ConfigToken::Literal(Token::new(
-			&self.source[start..end],
-			self.location,
-		)))
+		if is_template {
+			Ok(ConfigToken::TemplateBlock(Token::new(
+				&self.source[start..end],
+				self.location,
+			)))
+		} else {
+			Ok(ConfigToken::Literal(Token::new(
+				&self.source[start..end],
+				self.location,
+			)))
+		}
 	}
 
 	fn tokenize_template_block(&mut self) -> Fallible<ConfigToken<'source>> {

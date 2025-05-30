@@ -95,7 +95,7 @@ impl<'a> Template<'a> {
 				}
 				TemplateToken::Key(key) => {
 					if let Some(value) = hashmap.get(*key) {
-						writer.write(value.get_all().as_bytes())?;
+						writer.write(&value.get_all())?;
 					} else {
 						println!("warning: key not found {}", key);
 					}
@@ -158,11 +158,11 @@ impl<'a> Template<'a> {
 fn write_indexed<W, I>(writer: &mut W, value: I, indexes: &str) -> io::Result<()>
 where
 	W: io::Write,
-	I: CharIndex<ElementType = String>,
+	I: CharIndex<ElementType = Vec<u8>>,
 {
 	for index in indexes.chars() {
 		if let Some(v) = value.get(index) {
-			writer.write(v.as_bytes())?;
+			writer.write(&v)?;
 		} else {
 			println!("warning: index {} for key not found", index);
 		}

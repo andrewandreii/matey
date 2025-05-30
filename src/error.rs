@@ -1,6 +1,7 @@
 use std::{
 	error,
 	fmt::{self},
+	io,
 };
 
 pub type Fallible<T> = Result<T, Error>;
@@ -13,6 +14,10 @@ pub enum Error {
 }
 
 impl Error {
+	pub fn from_io(error: io::Error) -> Self {
+		Error::IOError(error.to_string())
+	}
+
 	pub fn parse_error(message: String) -> Self {
 		Error::ParseError(message)
 	}

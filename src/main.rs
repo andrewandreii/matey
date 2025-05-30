@@ -1,4 +1,5 @@
 use std::error::Error;
+use std::ffi::OsString;
 use std::fs;
 use std::path::{PathBuf, absolute};
 use std::{env, fs::File, io::Read};
@@ -10,7 +11,7 @@ use matty::material_newtype::MattyTheme;
 use matty::parser::IndexableVariable;
 use matty::parser::parse_config;
 
-fn try_load_from_config(template_files: &mut Vec<PathBuf>) -> Result<(), Box<dyn Error>> {
+fn try_load_from_config(template_files: &mut Vec<PathBuf>) -> Result<PathBuf, Box<dyn Error>> {
 	let mut config_path = PathBuf::new();
 
 	if let Ok(path) = env::var("XDG_CONFIG_HOME") {
@@ -23,11 +24,11 @@ fn try_load_from_config(template_files: &mut Vec<PathBuf>) -> Result<(), Box<dyn
 	config_path.push("matty");
 	fs::create_dir_all(&config_path)?;
 
-	for entry in fs::read_dir(config_path)? {
+	for entry in fs::read_dir(&config_path)? {
 		template_files.push(entry?.path());
 	}
 
-	Ok(())
+	Ok(config_path)
 }
 
 fn compute_theme(buffer: &[u8]) -> MattyTheme {
@@ -74,11 +75,20 @@ fn main() -> Result<(), Box<dyn Error>> {
 		}
 	}
 
-	if !no_configs {
-		if let Err(e) = try_load_from_config(&mut template_files) {
-			println!("could not load templates form config: {}", e);
+	let config_path = if !no_configs {
+		match try_load_from_config(&mut template_files) {
+			Err(e) => {
+				println!("could not load templates form config: {}", e);
+				None
+			}
+			Ok(mut path) => {
+				path.pop();
+				Some(path)
+			}
 		}
-	}
+	} else {
+		None
+	};
 
 	let image_path = if let Some(file) = image_path {
 		file
@@ -113,10 +123,29 @@ fn main() -> Result<(), Box<dyn Error>> {
 
 	let theme = if is_dark { &scheme.dark } else { &scheme.light };
 
-	let additional = [(
-		"image".to_string(),
-		IndexableVariable::plain(image_path.clone()),
-	)];
+	let additional = [
+		(
+			"image".to_string(),
+			IndexableVariable::plain(image_path.clone().into_bytes()),
+		),
+		(
+			"HOME".to_string(),
+			IndexableVariable::plain(
+				env::var_os("HOME")
+					.unwrap_or(OsString::new())
+					.into_encoded_bytes(),
+			),
+		),
+		(
+			"CONFIG".to_string(),
+			IndexableVariable::plain(
+				config_path
+					.unwrap_or(PathBuf::new())
+					.into_os_string()
+					.into_encoded_bytes(),
+			),
+		),
+	];
 
 	let hashmap = (theme)
 		.into_iter()

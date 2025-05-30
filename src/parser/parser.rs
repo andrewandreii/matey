@@ -41,8 +41,14 @@ where
 			ConfigToken::OptionCommand(command) => {
 				// FIXME: this is temporary
 				iter.next();
+
+				let mut is_template = false;
 				let arg = match iter.next() {
 					Some(Ok(ConfigToken::Literal(arg))) => arg.source,
+					Some(Ok(ConfigToken::TemplateBlock(arg))) => {
+						is_template = true;
+						arg.source
+					}
 					t => {
 						println!("got {:?}", t);
 						return parse_error(
@@ -56,7 +62,11 @@ where
 
 				match command.source {
 					"out" => {
-						config_builder.set_outfile(arg);
+						if is_template {
+							config_builder.set_outfile_template(Template::new(arg));
+						} else {
+							config_builder.set_outfile(arg);
+						}
 					}
 					"naming" => {
 						config_builder.set_naming(arg);

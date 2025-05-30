@@ -24,10 +24,10 @@ where
 }
 
 impl CharIndex for MattyArgb {
-	type ElementType = String;
+	type ElementType = Vec<u8>;
 
 	fn get_all(&self) -> Self::ElementType {
-		self.to_hex()
+		self.to_hex().into_bytes()
 	}
 
 	fn get(&self, idx: char) -> Option<Self::ElementType> {
@@ -40,20 +40,20 @@ impl CharIndex for MattyArgb {
 		};
 
 		Some(if idx.is_uppercase() {
-			format!("{}", value)
+			format!("{}", value).into_bytes()
 		} else {
-			format!("{:02X}", value)
+			format!("{:02X}", value).into_bytes()
 		})
 	}
 }
 
 pub enum IndexableVariable {
 	Argb(MattyArgb),
-	PlainString(String),
+	PlainString(Vec<u8>),
 }
 
 impl IndexableVariable {
-	pub fn plain(value: String) -> Self {
+	pub fn plain(value: Vec<u8>) -> Self {
 		IndexableVariable::PlainString(value)
 	}
 }
@@ -65,7 +65,7 @@ impl From<MattyArgb> for IndexableVariable {
 }
 
 impl CharIndex for IndexableVariable {
-	type ElementType = String;
+	type ElementType = Vec<u8>;
 
 	fn get_all(&self) -> Self::ElementType {
 		match self {
