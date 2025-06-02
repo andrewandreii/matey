@@ -1,7 +1,6 @@
 use crate::error::{Error, Fallible};
 
 use super::common::FileLocation;
-use super::template::Template;
 
 use std::ffi::OsString;
 use std::iter::Peekable;
@@ -52,7 +51,7 @@ impl<'source> Tokenizer<'source> {
 		let start = self.expect('#')? + 1;
 
 		let mut end = start - 1;
-		while let Some(_) = self.iter.next_if(|(_, c)| !c.is_whitespace()) {
+		while self.iter.next_if(|(_, c)| !c.is_whitespace()).is_some() {
 			self.location.step();
 			end += 1;
 		}
@@ -75,7 +74,7 @@ impl<'source> Tokenizer<'source> {
 		};
 
 		let mut end = start;
-		while let Some(_) = self.iter.next_if(|(_, c)| c.is_alphanumeric()) {
+		while self.iter.next_if(|(_, c)| c.is_alphanumeric()).is_some() {
 			self.location.step();
 			end += 1;
 		}
@@ -95,7 +94,7 @@ impl<'source> Tokenizer<'source> {
 
 		let mut is_template = false;
 		let mut end = start - 1;
-		while let Some((i, c)) = self.iter.next() {
+		for (i, c) in self.iter.by_ref() {
 			match c {
 				'"' => {
 					if !is_double {
@@ -151,7 +150,7 @@ impl<'source> Tokenizer<'source> {
 
 		let mut end = start - 1;
 		let mut opened = 0;
-		while let Some((i, c)) = self.iter.next() {
+		for (i, c) in self.iter.by_ref() {
 			match c {
 				'{' => {
 					opened += 1;
@@ -183,28 +182,28 @@ impl<'source> Tokenizer<'source> {
 		while let Some((_, c)) = self.iter.peek() {
 			match c {
 				'#' => {
-					return Ok(self.tokenize_option_command()?);
+					return self.tokenize_option_command();
 				}
 				'{' => {
-					return Ok(self.tokenize_template_block()?);
+					return self.tokenize_template_block();
 				}
-				'-' | '0'..'9' => {
+				'-' | '0'..='9' => {
 					todo!();
 				}
 				'"' | '\'' => {
-					return Ok(self.tokenize_literal()?);
+					return self.tokenize_literal();
 				}
 				'\n' => {
 					self.location.nl();
 					self.iter.next();
-					while let Some(_) = self.iter.next_if(|(_, c)| *c == '\n') {}
+					while self.iter.next_if(|(_, c)| *c == '\n').is_some() {}
 					return Ok(ConfigToken::NewLine);
 				}
 				c if c.is_whitespace() => {
 					self.iter.next();
 				}
 				c if c.is_alphabetic() => {
-					return Ok(self.tokenize_id()?);
+					return self.tokenize_id();
 				}
 				&c => {
 					return self.error(format!("Unexpected token {}", c)).into();
@@ -244,7 +243,7 @@ impl<'a> Iterator for Tokenizer<'a> {
 	}
 }
 
-pub fn parse_source<'source, 'other>(
+pub fn parse_source<'source>(
 	source: &'source str,
 	path: OsString,
 ) -> impl IntoIterator<Item = Fallible<ConfigToken<'source>>> {

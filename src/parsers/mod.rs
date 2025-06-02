@@ -1,7 +1,9 @@
+#![allow(clippy::uninlined_format_args)]
+
 mod common;
 mod config;
 mod parser;
-mod template;
+mod templates;
 mod tokenizer;
 
 use std::path::Path;
@@ -12,17 +14,17 @@ use tokenizer::parse_source;
 
 use crate::error::Fallible;
 
-pub use template::{CharIndex, IndexableVariable};
+pub use templates::{CharIndex, IndexableVariable};
 
 pub fn parse_config<'a>(path: impl AsRef<Path>, source: &'a str) -> Fallible<Config<'a>> {
-	let tokens = parse_source(&source, path.as_ref().into());
+	let tokens = parse_source(source, path.as_ref().into());
 
 	parse_tokens(tokens, path.as_ref().into())
 }
 
 mod test {
 	#[allow(unused_imports)]
-	use crate::parser::parse_config;
+	use crate::parsers::parse_config;
 
 	#[test]
 	fn test_template() {

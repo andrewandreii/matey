@@ -6,7 +6,7 @@ use std::vec::Vec;
 use super::indexable::{CharIndex, IndexableVariable};
 
 use crate::material_newtype::MattyScheme;
-use crate::parser::common::{RenamingScheme, rename_from_snake_case};
+use crate::parsers::common::{RenamingScheme, rename_from_snake_case};
 
 #[derive(Debug)]
 pub enum TemplateToken<'a> {
@@ -39,7 +39,7 @@ fn peekable_next_until<T: Iterator>(
 		opt_item = iter.next();
 	}
 
-	return opt_item.unwrap();
+	opt_item.unwrap()
 }
 
 impl<'a> Template<'a> {
@@ -67,9 +67,7 @@ impl<'a> Template<'a> {
 				_ => {
 					let start = *i;
 
-					let (end, _) = peekable_next_until(&mut iter, |(_, c)| {
-						return *c == '{' || *c == '\\';
-					});
+					let (end, _) = peekable_next_until(&mut iter, |(_, c)| *c == '{' || *c == '\\');
 					escaped = false;
 
 					tokens.push(TemplateToken::RawString(&template[start..=end]));
@@ -91,11 +89,11 @@ impl<'a> Template<'a> {
 		for token in &self.expr {
 			match token {
 				TemplateToken::RawString(s) => {
-					writer.write(s.as_bytes())?;
+					writer.write_all(s.as_bytes())?;
 				}
 				TemplateToken::Key(key) => {
 					if let Some(value) = hashmap.get(*key) {
-						writer.write(&value.get_all())?;
+						writer.write_all(&value.get_all())?;
 					} else {
 						println!("warning: key not found {}", key);
 					}
@@ -126,14 +124,14 @@ impl<'a> Template<'a> {
 			for token in &self.expr {
 				match token {
 					TemplateToken::RawString(s) => {
-						writer.write(s.as_bytes())?;
+						writer.write_all(s.as_bytes())?;
 					}
 					TemplateToken::Key(key) => match *key {
 						"name" => {
-							writer.write(rename_from_snake_case(name, rename).as_bytes())?;
+							writer.write_all(rename_from_snake_case(name, rename).as_bytes())?;
 						}
 						"color" => {
-							writer.write(color.to_hex().as_bytes())?;
+							writer.write_all(color.to_hex().as_bytes())?;
 						}
 						key => {
 							println!("warning: unknown key in template {}", key);
@@ -162,7 +160,7 @@ where
 {
 	for index in indexes.chars() {
 		if let Some(v) = value.get(index) {
-			writer.write(&v)?;
+			writer.write_all(&v)?;
 		} else {
 			println!("warning: index {} for key not found", index);
 		}

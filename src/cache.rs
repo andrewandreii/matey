@@ -28,13 +28,13 @@ impl Cacher {
 			if tmp.is_dir() {
 				tmp
 			} else {
-				return Error::IOError("cannot choose a folder for cache".to_string()).into();
+				return Error::IO("cannot choose a folder for cache".to_string()).into();
 			}
 		};
 
 		cache_folder.push(name);
 
-		fs::create_dir_all(&cache_folder).map_err(|e| Error::IOError(e.to_string()))?;
+		fs::create_dir_all(&cache_folder).map_err(|e| Error::IO(e.to_string()))?;
 
 		Ok(Cacher { cache_folder })
 	}
@@ -47,13 +47,13 @@ impl Cacher {
 
 	pub fn save_cache(&self, handle: &CacheHandle, theme: &MattyTheme) -> Fallible<()> {
 		let mut file = File::create(handle.as_path())
-			.map_err(|_| Error::IOError("Could not create cache file".to_string()))?;
+			.map_err(|_| Error::IO("Could not create cache file".to_string()))?;
 
 		let buf = theme as *const MattyTheme as *const u8;
 		let buf = unsafe { slice::from_raw_parts(buf, mem::size_of::<MattyTheme>()) };
 
 		file.write_all(buf)
-			.map_err(|_| Error::IOError("Could not write cache".to_string()))?;
+			.map_err(|_| Error::IO("Could not write cache".to_string()))?;
 
 		Ok(())
 	}
@@ -63,17 +63,19 @@ impl Cacher {
 		let mut file = match File::open(handle.as_path()) {
 			Ok(file) => file,
 			Err(e) if e.kind() == ErrorKind::NotFound => return None,
-			Err(_) => return Some(Err(Error::IOError("Could not open file".to_string()))),
+			Err(_) => return Some(Err(Error::IO("Could not open file".to_string()))),
 		};
 
 		if let Err(e) = file.read_exact(&mut cache) {
 			if e.kind() == ErrorKind::UnexpectedEof {
-				return Some(Err(Error::IOError("Malformed cache".to_string())));
+				return Some(Err(Error::IO("Malformed cache".to_string())));
 			}
-			return Some(Err(Error::IOError("Could not read cache".to_string())));
+			return Some(Err(Error::IO("Could not read cache".to_string())));
 		}
 
-		Some(Ok(unsafe { mem::transmute(cache) }))
+		Some(Ok(unsafe {
+			mem::transmute::<[u8; mem::size_of::<MattyTheme>()], MattyTheme>(cache)
+		}))
 	}
 }
 

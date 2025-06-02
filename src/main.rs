@@ -1,5 +1,6 @@
+#![allow(clippy::uninlined_format_args)]
+
 use std::error::Error;
-use std::ffi::OsString;
 use std::fs;
 use std::path::{PathBuf, absolute};
 use std::{env, fs::File, io::Read};
@@ -8,8 +9,8 @@ use material_colors::{image::ImageReader, theme::ThemeBuilder};
 
 use matty::cache::Cacher;
 use matty::material_newtype::MattyTheme;
-use matty::parser::IndexableVariable;
-use matty::parser::parse_config;
+use matty::parsers::IndexableVariable;
+use matty::parsers::parse_config;
 
 fn try_load_from_config(template_files: &mut Vec<PathBuf>) -> Result<PathBuf, Box<dyn Error>> {
 	let mut config_path = PathBuf::new();
@@ -130,17 +131,13 @@ fn main() -> Result<(), Box<dyn Error>> {
 		),
 		(
 			"HOME".to_string(),
-			IndexableVariable::plain(
-				env::var_os("HOME")
-					.unwrap_or(OsString::new())
-					.into_encoded_bytes(),
-			),
+			IndexableVariable::plain(env::var_os("HOME").unwrap_or_default().into_encoded_bytes()),
 		),
 		(
 			"CONFIG".to_string(),
 			IndexableVariable::plain(
 				config_path
-					.unwrap_or(PathBuf::new())
+					.unwrap_or_default()
 					.into_os_string()
 					.into_encoded_bytes(),
 			),

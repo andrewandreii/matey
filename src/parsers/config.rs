@@ -6,8 +6,8 @@ use super::common::RenamingScheme;
 use crate::error::Error;
 use crate::error::Fallible;
 use crate::material_newtype::MattyScheme;
-use crate::parser::template::IndexableVariable;
-use crate::parser::template::Template;
+use crate::parsers::templates::IndexableVariable;
+use crate::parsers::templates::Template;
 
 #[derive(Debug)]
 enum TemplatedString<'a> {
@@ -25,7 +25,7 @@ impl<'a> ConfigBuilder<'a> {
 	pub fn new<'b: 'a>(outfile: &'b str) -> Self {
 		ConfigBuilder {
 			outfile: TemplatedString::No(outfile),
-			naming: RenamingScheme::SnakeCase,
+			naming: RenamingScheme::Snake,
 			templates: Vec::new(),
 		}
 	}
@@ -49,16 +49,16 @@ impl<'a> ConfigBuilder<'a> {
 	pub fn set_naming<'b: 'a>(&mut self, naming: &'b str) {
 		use RenamingScheme::*;
 		self.naming = match naming {
-			"snake_case" => SnakeCase,
-			"UPPERCASE" => UpperCase,
-			"UPPER_CASE" | "UPPER_SNAKE_CASE" => UpperSnakeCase,
-			"dash-case" => DashCase,
-			"camelCase" => CamelCase,
-			"CamelCase" | "UpperCamelCase" => UpperCamelCase,
-			"lowercase" | "flatcase" => FlatCase,
+			"snake_case" => Snake,
+			"UPPERCASE" => Upper,
+			"UPPER_CASE" | "UPPER_SNAKE_CASE" => UpperSnake,
+			"dash-case" => Dash,
+			"camelCase" => Camel,
+			"CamelCase" | "UpperCamelCase" => UpperCamel,
+			"lowercase" | "flatcase" => Flat,
 			_ => {
 				println!("warning: unknown naming convention");
-				SnakeCase
+				Snake
 			}
 		};
 	}
@@ -96,16 +96,16 @@ impl<'a> Config<'a> {
 				let mut path = Vec::new();
 				template
 					.run_with_hashmap(&mut path, hashmap)
-					.map_err(|e| Error::from_io(e))?;
+					.map_err(Error::from_io)?;
 				File::create(String::from_utf8(path.clone()).expect("Invalid file path. Aborting"))
 					.map_err(|_| {
-						Error::IOError(format!("Could not open file {:?}", unsafe {
+						Error::IO(format!("Could not open file {:?}", unsafe {
 							String::from_utf8_unchecked(path)
 						}))
 					})?
 			}
 			TemplatedString::No(path) => File::create(path)
-				.map_err(|_| Error::IOError(format!("Could not open file {:?}", path)))?,
+				.map_err(|_| Error::IO(format!("Could not open file {:?}", path)))?,
 		};
 
 		for template in &self.templates {
@@ -113,12 +113,12 @@ impl<'a> Config<'a> {
 				ConfigTemplate::Norm(template) => {
 					template
 						.run_with_hashmap(&mut file, hashmap)
-						.map_err(|e| Error::from_io(e))?;
+						.map_err(Error::from_io)?;
 				}
 				ConfigTemplate::Foreach(template) => {
 					template
 						.run_with_scheme(&mut file, scheme, self.rename)
-						.map_err(|e| Error::from_io(e))?;
+						.map_err(Error::from_io)?;
 				}
 			}
 		}

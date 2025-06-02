@@ -2,10 +2,10 @@ use std::ffi::OsString;
 use std::iter::Peekable;
 
 use crate::error::{Error, Fallible};
-use crate::parser::config::Config;
-use crate::parser::config::ConfigBuilder;
+use crate::parsers::config::Config;
+use crate::parsers::config::ConfigBuilder;
 
-use super::template::Template;
+use super::templates::Template;
 use super::tokenizer::{ConfigToken, Token};
 
 fn parse_error(filename: &OsString, token: &Token, message: String) -> Error {

@@ -8,31 +8,31 @@ pub type Fallible<T> = Result<T, Error>;
 
 #[derive(Debug, Clone)]
 pub enum Error {
-	ParseError(String),
-	TokenizingError(String),
-	IOError(String),
+	Parse(String),
+	Tokenizing(String),
+	IO(String),
 }
 
 impl Error {
 	pub fn from_io(error: io::Error) -> Self {
-		Error::IOError(error.to_string())
+		Error::IO(error.to_string())
 	}
 
 	pub fn parse_error(message: String) -> Self {
-		Error::ParseError(message)
+		Error::Parse(message)
 	}
 
 	pub fn tokenizing_error(message: String) -> Self {
-		Error::TokenizingError(message)
+		Error::Tokenizing(message)
 	}
 }
 
 impl fmt::Display for Error {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		match self {
-			Error::ParseError(message) => write!(f, "Parsing Error: {}", message),
-			Error::TokenizingError(message) => write!(f, "Tokenizing Error: {}", message),
-			Error::IOError(message) => write!(f, "IO Error: {}", message),
+			Error::Parse(message) => write!(f, "Parsing Error: {}", message),
+			Error::Tokenizing(message) => write!(f, "Tokenizing Error: {}", message),
+			Error::IO(message) => write!(f, "IO Error: {}", message),
 		}
 	}
 }

@@ -29,13 +29,13 @@ impl fmt::Display for FileLocation {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RenamingScheme {
-	SnakeCase,
-	DashCase,
-	CamelCase,
-	UpperCase,
-	UpperSnakeCase,
-	UpperCamelCase,
-	FlatCase,
+	Snake,
+	Dash,
+	Camel,
+	Upper,
+	UpperSnake,
+	UpperCamel,
+	Flat,
 }
 
 fn from_snake(s: &str, make_first_upper: bool) -> String {
@@ -53,7 +53,7 @@ fn from_snake(s: &str, make_first_upper: bool) -> String {
 	}
 
 	for chunk in chunks {
-		fin.push(chunk.chars().nth(0).unwrap().to_ascii_uppercase());
+		fin.push(chunk.chars().next().unwrap().to_ascii_uppercase());
 		fin.push_str(&chunk[1..]);
 	}
 
@@ -63,9 +63,9 @@ fn from_snake(s: &str, make_first_upper: bool) -> String {
 pub fn rename_from_snake_case<S: AsRef<str>>(s: S, renaming: RenamingScheme) -> String {
 	use RenamingScheme::*;
 	match renaming {
-		DashCase => s.as_ref().replace("_", "-"),
-		SnakeCase => s.as_ref().to_owned(),
-		UpperCase => s
+		Dash => s.as_ref().replace("_", "-"),
+		Snake => s.as_ref().to_owned(),
+		Upper => s
 			.as_ref()
 			.chars()
 			.filter_map(|c| {
@@ -76,9 +76,9 @@ pub fn rename_from_snake_case<S: AsRef<str>>(s: S, renaming: RenamingScheme) -> 
 				}
 			})
 			.collect(),
-		UpperSnakeCase => s.as_ref().to_uppercase(),
-		FlatCase => s.as_ref().replace("_", ""),
-		CamelCase => from_snake(s.as_ref(), false),
-		UpperCamelCase => from_snake(s.as_ref(), true),
+		UpperSnake => s.as_ref().to_uppercase(),
+		Flat => s.as_ref().replace("_", ""),
+		Camel => from_snake(s.as_ref(), false),
+		UpperCamel => from_snake(s.as_ref(), true),
 	}
 }
