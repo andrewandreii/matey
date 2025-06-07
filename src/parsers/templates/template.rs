@@ -3,6 +3,8 @@ use std::io;
 use std::iter::Peekable;
 use std::vec::Vec;
 
+use log::warn;
+
 use super::indexable::{CharIndex, IndexableVariable};
 
 use crate::material_newtype::MateyScheme;
@@ -95,14 +97,14 @@ impl<'a> Template<'a> {
 					if let Some(value) = hashmap.get(*key) {
 						writer.write_all(&value.get_all())?;
 					} else {
-						println!("warning: key not found {}", key);
+						warn!("key \"{key}\" not found");
 					}
 				}
 				TemplateToken::IndexedKey(key, indexes) => {
 					if let Some(value) = hashmap.get(*key) {
-						write_indexed(writer, value, indexes)?;
+						write_indexed(writer, value, indexes, key, true)?;
 					} else {
-						println!("warning: key not found {}", key);
+						warn!("warning: key \"{key}\" not found");
 					}
 				}
 			}
@@ -120,6 +122,8 @@ impl<'a> Template<'a> {
 	where
 		W: io::Write,
 	{
+		let mut should_warn = true;
+
 		for (name, color) in scheme {
 			for token in &self.expr {
 				match token {
@@ -134,26 +138,38 @@ impl<'a> Template<'a> {
 							writer.write_all(color.to_hex().as_bytes())?;
 						}
 						key => {
-							println!("warning: unknown key in template {}", key);
+							if should_warn {
+								warn!("unknown key \"{key}\" in foreach");
+							}
 						}
 					},
 					TemplateToken::IndexedKey(key, indexes) => match *key {
 						"color" => {
-							write_indexed(writer, color, indexes)?;
+							write_indexed(writer, color, indexes, key, should_warn)?;
 						}
 						key => {
-							println!("warning: key {} cannot be indexed", key);
+							if should_warn {
+								warn!("key \"{key}\" cannot be indexed");
+							}
 						}
 					},
 				}
 			}
+
+			should_warn = false;
 		}
 
 		Ok(())
 	}
 }
 
-fn write_indexed<W, I>(writer: &mut W, value: I, indexes: &str) -> io::Result<()>
+fn write_indexed<W, I>(
+	writer: &mut W,
+	value: I,
+	indexes: &str,
+	key: &str,
+	should_warn: bool,
+) -> io::Result<()>
 where
 	W: io::Write,
 	I: CharIndex<ElementType = Vec<u8>>,
@@ -161,8 +177,8 @@ where
 	for index in indexes.chars() {
 		if let Some(v) = value.get(index) {
 			writer.write_all(&v)?;
-		} else {
-			println!("warning: index {} for key not found", index);
+		} else if should_warn {
+			warn!("warning: index \"{index}\" for key \"{key}\" not found");
 		}
 	}
 

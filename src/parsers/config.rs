@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 use std::fs::File;
 
+use log::warn;
+
 use super::common::RenamingScheme;
 
 use crate::error::Error;
@@ -57,7 +59,7 @@ impl<'a> ConfigBuilder<'a> {
 			"CamelCase" | "UpperCamelCase" => UpperCamel,
 			"lowercase" | "flatcase" => Flat,
 			_ => {
-				println!("warning: unknown naming convention");
+				warn!("unknown naming convention {naming}");
 				Snake
 			}
 		};

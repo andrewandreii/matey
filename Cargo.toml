@@ -4,8 +4,10 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+log = "0.4.27"
 material-colors = { version = "=0.4.2", features = ["image"] }
 sha2 = { version = "0.10.9", features = ["asm"] }
+simple_logger = { version = "5.0.0", features = ["nightly"], default-features = false }
 
 [profile.release-with-debug]
 inherits = "release"

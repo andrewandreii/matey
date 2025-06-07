@@ -7,8 +7,8 @@ pub struct FileLocation {
 }
 
 impl FileLocation {
-	pub fn new(line: usize, column: usize) -> Self {
-		FileLocation { line, column }
+	pub fn new() -> Self {
+		FileLocation { line: 1, column: 1 }
 	}
 
 	pub fn step(&mut self) {
@@ -16,7 +16,7 @@ impl FileLocation {
 	}
 
 	pub fn nl(&mut self) {
-		self.column = 0;
+		self.column = 1;
 		self.line += 1;
 	}
 }

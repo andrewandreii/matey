@@ -5,12 +5,14 @@ use std::fs;
 use std::path::{PathBuf, absolute};
 use std::{env, fs::File, io::Read};
 
+use log::{LevelFilter, error, info};
 use material_colors::{image::ImageReader, theme::ThemeBuilder};
 
 use matey::cache::Cacher;
 use matey::material_newtype::MateyTheme;
 use matey::parsers::IndexableVariable;
 use matey::parsers::parse_config;
+use simple_logger::SimpleLogger;
 
 fn try_load_from_config(template_files: &mut Vec<PathBuf>) -> Result<PathBuf, Box<dyn Error>> {
 	let mut config_path = PathBuf::new();
@@ -49,6 +51,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 	let mut is_dark = true;
 	let mut dry_run = false;
 	let mut no_configs = false;
+	let mut log_level = LevelFilter::Warn;
 	while let Some(arg) = args.next() {
 		match arg.as_str() {
 			"-i" => {
@@ -70,16 +73,24 @@ fn main() -> Result<(), Box<dyn Error>> {
 			"--dry-run" => {
 				dry_run = true;
 			}
+			"-q" | "--quiet" => {
+				log_level = LevelFilter::Off;
+			}
+			"-v" | "--verbose" => {
+				log_level = LevelFilter::Info;
+			}
 			other => {
 				panic!("Unknown option {}", other);
 			}
 		}
 	}
 
+	SimpleLogger::new().with_level(log_level).init().unwrap();
+
 	let config_path = if !no_configs {
 		match try_load_from_config(&mut template_files) {
 			Err(e) => {
-				println!("could not load templates form config: {}", e);
+				error!("could not load templates form config: {}", e);
 				None
 			}
 			Ok(mut path) => {
@@ -105,14 +116,14 @@ fn main() -> Result<(), Box<dyn Error>> {
 		match cacher.get_cache(&handle) {
 			Some(Ok(theme)) => theme,
 			Some(Err(e)) => {
-				println!("error loading cache {e}");
+				error!("error loading cache: {}", e);
 				compute_theme(&buffer)
 			}
 			None => {
 				let theme = compute_theme(&buffer);
 
 				if cacher.save_cache(&handle, &theme).is_err() {
-					println!("Could not save theme to cache");
+					error!("could not save theme to cache");
 				}
 
 				theme
@@ -151,21 +162,32 @@ fn main() -> Result<(), Box<dyn Error>> {
 		.collect();
 
 	for path in template_files {
-		let mut file = File::open(&path).expect("Could not open template file");
+		info!("parsing {}", path.display());
+		let mut file = match File::open(&path) {
+			Ok(file) => file,
+			Err(e) => {
+				error!("while opening {}: {}", path.display(), e);
+				continue;
+			}
+		};
 		let mut buf = String::new();
-		file.read_to_string(&mut buf)
-			.expect("Could not read template file");
+
+		if let Err(e) = file.read_to_string(&mut buf) {
+			error!("while reading {}: {}", path.display(), e);
+			continue;
+		}
+
 		let config = match parse_config(&path, &buf) {
 			Ok(config) => config,
 			Err(e) => {
-				println!("encountered error while parsing template: {e}");
+				error!("while parsing {}: {}", path.display(), e);
 				continue;
 			}
 		};
 		if !dry_run {
-			config
-				.write(theme, &hashmap)
-				.expect("Could not write template");
+			if let Err(e) = config.write(theme, &hashmap) {
+				error!("while writing template {}: {}", path.display(), e);
+			}
 		}
 	}
 

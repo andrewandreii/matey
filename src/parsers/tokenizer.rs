@@ -43,7 +43,7 @@ impl<'source> Tokenizer<'source> {
 			path,
 			source,
 			iter: source.char_indices().peekable(),
-			location: FileLocation::new(0, 0),
+			location: FileLocation::new(),
 		}
 	}
 
@@ -51,7 +51,7 @@ impl<'source> Tokenizer<'source> {
 		let start = self.expect('#')? + 1;
 
 		let mut end = start - 1;
-		while self.iter.next_if(|(_, c)| !c.is_whitespace()).is_some() {
+		while self.iter.next_if(|(_, c)| c.is_alphabetic()).is_some() {
 			self.location.step();
 			end += 1;
 		}
@@ -95,6 +95,7 @@ impl<'source> Tokenizer<'source> {
 		let mut is_template = false;
 		let mut end = start - 1;
 		for (i, c) in self.iter.by_ref() {
+			self.location.step();
 			match c {
 				'"' => {
 					if !is_double {
@@ -143,6 +144,7 @@ impl<'source> Tokenizer<'source> {
 		let start = self.expect('{')?;
 
 		let start = if let Some((i, _)) = self.iter.next_if(|(_, c)| *c == '\n') {
+			self.location.nl();
 			i
 		} else {
 			start
@@ -162,8 +164,11 @@ impl<'source> Tokenizer<'source> {
 					}
 					opened -= 1;
 				}
+				'\n' => {
+					self.location.nl();
+				}
 				_ => {
-					continue;
+					self.location.step();
 				}
 			}
 		}
@@ -179,44 +184,43 @@ impl<'source> Tokenizer<'source> {
 	}
 
 	fn tokenize_next(&mut self) -> Fallible<ConfigToken<'source>> {
+		let mut next = Ok(ConfigToken::Eof);
 		while let Some((_, c)) = self.iter.peek() {
-			match c {
-				'#' => {
-					return self.tokenize_option_command();
-				}
-				'{' => {
-					return self.tokenize_template_block();
-				}
-				'-' | '0'..='9' => {
-					todo!();
-				}
-				'"' | '\'' => {
-					return self.tokenize_literal();
-				}
+			next = match c {
+				'#' => self.tokenize_option_command(),
+				'{' => self.tokenize_template_block(),
+				'"' | '\'' => self.tokenize_literal(),
 				'\n' => {
 					self.location.nl();
 					self.iter.next();
-					while self.iter.next_if(|(_, c)| *c == '\n').is_some() {}
-					return Ok(ConfigToken::NewLine);
+					while self.iter.next_if(|(_, c)| *c == '\n').is_some() {
+						self.location.nl();
+					}
+					Ok(ConfigToken::NewLine)
 				}
 				c if c.is_whitespace() => {
 					self.iter.next();
+					continue;
 				}
-				c if c.is_alphabetic() => {
-					return self.tokenize_id();
-				}
-				&c => {
-					return self.error(format!("Unexpected token {}", c)).into();
-				}
-			}
+				c if c.is_alphabetic() => self.tokenize_id(),
+				&c => self.error(format!("Unexpected token {}", c)).into(),
+			};
+			break;
 		}
 
-		Ok(ConfigToken::Eof)
+		next
 	}
 
 	fn expect(&mut self, c: char) -> Fallible<usize> {
 		match self.iter.next() {
-			Some((i, got)) if got == c => Ok(i),
+			Some((i, got)) if got == c => {
+				if c == '\n' {
+					self.location.nl();
+				} else {
+					self.location.step();
+				}
+				Ok(i)
+			}
 			Some((_, got)) => self.error(format!("expected {}, got {}", c, got)).into(),
 			None => self.error(format!("expected {}, got EOF", c)).into(),
 		}

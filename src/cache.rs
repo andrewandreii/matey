@@ -22,9 +22,11 @@ pub struct Cacher {
 impl Cacher {
 	pub fn new(name: impl AsRef<Path>) -> Fallible<Cacher> {
 		let mut cache_folder = if let Some(home) = env::var_os("HOME") {
-			PathBuf::from(home)
+			let mut folder = PathBuf::from(home);
+			folder.push(".cache");
+			folder
 		} else {
-			let tmp = PathBuf::from("/tmp/");
+			let tmp = PathBuf::from("/tmp");
 			if tmp.is_dir() {
 				tmp
 			} else {
