@@ -8,10 +8,12 @@ use std::{env, fs::File, io::Read};
 use log::{LevelFilter, error, info};
 use material_colors::{image::ImageReader, theme::ThemeBuilder};
 
+use matey::args::{Arg, ArgParser, ArgParserBuilder, ArgType};
 use matey::cache::Cacher;
 use matey::material_newtype::MateyTheme;
 use matey::parsers::IndexableVariable;
 use matey::parsers::parse_config;
+
 use simple_logger::SimpleLogger;
 
 fn try_load_from_config(template_files: &mut Vec<PathBuf>) -> Result<PathBuf, Box<dyn Error>> {
@@ -41,9 +43,84 @@ fn compute_theme(buffer: &[u8]) -> MateyTheme {
 	MateyTheme::new(theme.schemes.light.into(), theme.schemes.dark.into())
 }
 
-fn main() -> Result<(), Box<dyn Error>> {
-	let mut args = env::args().skip(1).peekable();
+fn build_arg_parser() -> ArgParser {
+	ArgParserBuilder::new(
+		env::args(),
+		Arg::new(
+			"image",
+			Some("-i"),
+			None,
+			"the image to use",
+			ArgType::String,
+		),
+	)
+	.add_opt(Arg::new(
+		"template",
+		Some("-t"),
+		None,
+		"an additional template",
+		ArgType::String,
+	))
+	.add_opt(Arg::new(
+		"use-cache",
+		Some("-u"),
+		Some("--use-cache"),
+		"whether matey should use the cache",
+		ArgType::Flag,
+	))
+	.add_opt(Arg::new(
+		"light",
+		Some("-l"),
+		Some("--light"),
+		"whether the output should be the light version of the theme",
+		ArgType::Flag,
+	))
+	.add_opt(Arg::new(
+		"no-configs",
+		Some("-n"),
+		Some("--no-configs"),
+		"don't use the templates in matey's config folder",
+		ArgType::Flag,
+	))
+	.add_opt(Arg::new(
+		"dry-run",
+		Some("-d"),
+		Some("--dry-run"),
+		"don't write any configs, only check for syntax errors and generate theme",
+		ArgType::Flag,
+	))
+	.add_opt(Arg::new(
+		"quiet",
+		Some("-q"),
+		Some("--quiet"),
+		"don't output anything to stderr",
+		ArgType::Flag,
+	))
+	.add_opt(Arg::new(
+		"verbose",
+		Some("-v"),
+		Some("--verbose"),
+		"output everything",
+		ArgType::Flag,
+	))
+	.add_priority_opt(Arg::new(
+		"version",
+		None,
+		Some("--version"),
+		"prints version",
+		ArgType::Flag,
+	))
+	.add_priority_opt(Arg::new(
+		"help",
+		Some("-h"),
+		Some("--help"),
+		"print help text",
+		ArgType::Flag,
+	))
+	.build()
+}
 
+fn main() -> Result<(), Box<dyn Error>> {
 	let mut template_files: Vec<PathBuf> = Vec::new();
 
 	let mut image_path: Option<String> = None;
@@ -52,32 +129,42 @@ fn main() -> Result<(), Box<dyn Error>> {
 	let mut dry_run = false;
 	let mut no_configs = false;
 	let mut log_level = LevelFilter::Warn;
-	while let Some(arg) = args.next() {
-		match arg.as_str() {
-			"-i" => {
-				let path: PathBuf = args.next().expect("-i requires an argument").into();
+
+	let mut parser = build_arg_parser();
+	while let Some((name, value)) = parser.next() {
+		match name {
+			"template" => {
+				let path: PathBuf = value.unwrap().into();
 				template_files.push(absolute(path)?);
 			}
-			"-f" => {
-				image_path = Some(args.next().expect("-f requires an argument"));
+			"image" => {
+				image_path = Some(value.unwrap());
 			}
-			"-u" | "--use-cache" => {
+			"use-cache" => {
 				use_cache = true;
 			}
-			"-l" => {
+			"light" => {
 				is_dark = false;
 			}
-			"--no-configs" => {
+			"no-configs" => {
 				no_configs = true;
 			}
-			"--dry-run" => {
+			"dry-run" => {
 				dry_run = true;
 			}
-			"-q" | "--quiet" => {
+			"quiet" => {
 				log_level = LevelFilter::Off;
 			}
-			"-v" | "--verbose" => {
+			"verbose" => {
 				log_level = LevelFilter::Info;
+			}
+			"help" => {
+				parser.emit_help();
+				return Ok(());
+			}
+			"version" => {
+				println!("matey {}", env!("CARGO_PKG_VERSION"));
+				return Ok(());
 			}
 			other => {
 				panic!("Unknown option {}", other);
