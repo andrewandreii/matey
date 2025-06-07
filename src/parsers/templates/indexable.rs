@@ -1,4 +1,4 @@
-use crate::material_newtype::MattyArgb;
+use crate::material_newtype::MateyArgb;
 
 pub trait CharIndex {
 	type ElementType;
@@ -23,7 +23,7 @@ where
 	}
 }
 
-impl CharIndex for MattyArgb {
+impl CharIndex for MateyArgb {
 	type ElementType = Vec<u8>;
 
 	fn get_all(&self) -> Self::ElementType {
@@ -48,7 +48,7 @@ impl CharIndex for MattyArgb {
 }
 
 pub enum IndexableVariable {
-	Argb(MattyArgb),
+	Argb(MateyArgb),
 	PlainString(Vec<u8>),
 }
 
@@ -58,8 +58,8 @@ impl IndexableVariable {
 	}
 }
 
-impl From<MattyArgb> for IndexableVariable {
-	fn from(value: MattyArgb) -> Self {
+impl From<MateyArgb> for IndexableVariable {
+	fn from(value: MateyArgb) -> Self {
 		IndexableVariable::Argb(value)
 	}
 }

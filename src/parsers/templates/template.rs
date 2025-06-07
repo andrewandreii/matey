@@ -5,7 +5,7 @@ use std::vec::Vec;
 
 use super::indexable::{CharIndex, IndexableVariable};
 
-use crate::material_newtype::MattyScheme;
+use crate::material_newtype::MateyScheme;
 use crate::parsers::common::{RenamingScheme, rename_from_snake_case};
 
 #[derive(Debug)]
@@ -114,7 +114,7 @@ impl<'a> Template<'a> {
 	pub fn run_with_scheme<W>(
 		&self,
 		writer: &mut W,
-		scheme: &MattyScheme,
+		scheme: &MateyScheme,
 		rename: RenamingScheme,
 	) -> io::Result<()>
 	where

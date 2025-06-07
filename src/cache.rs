@@ -12,7 +12,7 @@ use sha2::{Digest, Sha256};
 
 use crate::{
 	error::{Error, Fallible},
-	material_newtype::MattyTheme,
+	material_newtype::MateyTheme,
 };
 
 pub struct Cacher {
@@ -45,12 +45,12 @@ impl Cacher {
 		CacheHandle(path)
 	}
 
-	pub fn save_cache(&self, handle: &CacheHandle, theme: &MattyTheme) -> Fallible<()> {
+	pub fn save_cache(&self, handle: &CacheHandle, theme: &MateyTheme) -> Fallible<()> {
 		let mut file = File::create(handle.as_path())
 			.map_err(|_| Error::IO("Could not create cache file".to_string()))?;
 
-		let buf = theme as *const MattyTheme as *const u8;
-		let buf = unsafe { slice::from_raw_parts(buf, mem::size_of::<MattyTheme>()) };
+		let buf = theme as *const MateyTheme as *const u8;
+		let buf = unsafe { slice::from_raw_parts(buf, mem::size_of::<MateyTheme>()) };
 
 		file.write_all(buf)
 			.map_err(|_| Error::IO("Could not write cache".to_string()))?;
@@ -58,8 +58,8 @@ impl Cacher {
 		Ok(())
 	}
 
-	pub fn get_cache(&self, handle: &CacheHandle) -> Option<Fallible<MattyTheme>> {
-		let mut cache = [0u8; mem::size_of::<MattyTheme>()];
+	pub fn get_cache(&self, handle: &CacheHandle) -> Option<Fallible<MateyTheme>> {
+		let mut cache = [0u8; mem::size_of::<MateyTheme>()];
 		let mut file = match File::open(handle.as_path()) {
 			Ok(file) => file,
 			Err(e) if e.kind() == ErrorKind::NotFound => return None,
@@ -74,7 +74,7 @@ impl Cacher {
 		}
 
 		Some(Ok(unsafe {
-			mem::transmute::<[u8; mem::size_of::<MattyTheme>()], MattyTheme>(cache)
+			mem::transmute::<[u8; mem::size_of::<MateyTheme>()], MateyTheme>(cache)
 		}))
 	}
 }

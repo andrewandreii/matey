@@ -88,7 +88,7 @@ sametype!(
 	#[field_type = u8]
 	#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 	#[repr(C)]
-	pub struct MattyArgb {
+	pub struct MateyArgb {
 		pub alpha,
 		pub red,
 		pub green,
@@ -96,7 +96,7 @@ sametype!(
 	}
 );
 
-impl MattyArgb {
+impl MateyArgb {
 	pub fn to_hex(&self) -> String {
 		format!("{:02X}{:02X}{:02X}", self.red, self.green, self.blue)
 	}
@@ -105,10 +105,10 @@ impl MattyArgb {
 sametype!(
 	#[iter]
 	#[same_as = Scheme]
-	#[field_type = MattyArgb]
+	#[field_type = MateyArgb]
 	#[derive(Debug, Clone, Copy, Default)]
 	#[repr(C)]
-	pub struct MattyScheme {
+	pub struct MateyScheme {
 		pub primary,
 		pub on_primary,
 		pub primary_container,
@@ -163,13 +163,13 @@ sametype!(
 
 #[derive(Debug, Clone)]
 #[repr(C)]
-pub struct MattyTheme {
-	pub light: MattyScheme,
-	pub dark: MattyScheme,
+pub struct MateyTheme {
+	pub light: MateyScheme,
+	pub dark: MateyScheme,
 }
 
-impl MattyTheme {
-	pub fn new(light: MattyScheme, dark: MattyScheme) -> Self {
-		MattyTheme { light, dark }
+impl MateyTheme {
+	pub fn new(light: MateyScheme, dark: MateyScheme) -> Self {
+		MateyTheme { light, dark }
 	}
 }

@@ -5,7 +5,7 @@ use super::common::RenamingScheme;
 
 use crate::error::Error;
 use crate::error::Fallible;
-use crate::material_newtype::MattyScheme;
+use crate::material_newtype::MateyScheme;
 use crate::parsers::templates::IndexableVariable;
 use crate::parsers::templates::Template;
 
@@ -88,7 +88,7 @@ pub struct Config<'a> {
 impl<'a> Config<'a> {
 	pub fn write(
 		&self,
-		scheme: &MattyScheme,
+		scheme: &MateyScheme,
 		hashmap: &HashMap<String, IndexableVariable>,
 	) -> Fallible<()> {
 		let mut file = match &self.outfile {

@@ -7,10 +7,10 @@ use std::{env, fs::File, io::Read};
 
 use material_colors::{image::ImageReader, theme::ThemeBuilder};
 
-use matty::cache::Cacher;
-use matty::material_newtype::MattyTheme;
-use matty::parsers::IndexableVariable;
-use matty::parsers::parse_config;
+use matey::cache::Cacher;
+use matey::material_newtype::MateyTheme;
+use matey::parsers::IndexableVariable;
+use matey::parsers::parse_config;
 
 fn try_load_from_config(template_files: &mut Vec<PathBuf>) -> Result<PathBuf, Box<dyn Error>> {
 	let mut config_path = PathBuf::new();
@@ -22,7 +22,7 @@ fn try_load_from_config(template_files: &mut Vec<PathBuf>) -> Result<PathBuf, Bo
 		config_path.push(".config");
 	}
 
-	config_path.push("matty");
+	config_path.push("matey");
 	fs::create_dir_all(&config_path)?;
 
 	for entry in fs::read_dir(&config_path)? {
@@ -32,11 +32,11 @@ fn try_load_from_config(template_files: &mut Vec<PathBuf>) -> Result<PathBuf, Bo
 	Ok(config_path)
 }
 
-fn compute_theme(buffer: &[u8]) -> MattyTheme {
+fn compute_theme(buffer: &[u8]) -> MateyTheme {
 	let mut image = ImageReader::read(buffer).expect("Could not parse image");
 	image.resize(128, 128, material_colors::image::FilterType::Lanczos3);
 	let theme = ThemeBuilder::with_source(ImageReader::extract_color(&image)).build();
-	MattyTheme::new(theme.schemes.light.into(), theme.schemes.dark.into())
+	MateyTheme::new(theme.schemes.light.into(), theme.schemes.dark.into())
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -100,7 +100,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 	let buffer = fs::read(&image_path).expect("Could not read image");
 
 	let scheme = if use_cache {
-		let cacher = Cacher::new("matty")?;
+		let cacher = Cacher::new("matey")?;
 		let handle = cacher.get(&buffer);
 		match cacher.get_cache(&handle) {
 			Some(Ok(theme)) => theme,
