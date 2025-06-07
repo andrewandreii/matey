@@ -30,7 +30,7 @@ where
 {
 	let mut iter = tokens.into_iter().peekable();
 
-	let mut config_builder = ConfigBuilder::new("default.conf");
+	let mut config_builder = ConfigBuilder::new();
 	while let Some(token) = iter.peek() {
 		let token = match token {
 			Ok(token) => *token,
@@ -144,5 +144,5 @@ where
 		}
 	}
 
-	Ok(config_builder.build())
+	Ok(config_builder.build()?)
 }

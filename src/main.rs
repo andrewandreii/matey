@@ -187,6 +187,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 		if !dry_run {
 			if let Err(e) = config.write(theme, &hashmap) {
 				error!("while writing template {}: {}", path.display(), e);
+				continue;
 			}
 		}
 	}

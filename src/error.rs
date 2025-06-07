@@ -11,6 +11,7 @@ pub enum Error {
 	Parse(String),
 	Tokenizing(String),
 	IO(String),
+	Config(String),
 }
 
 impl Error {
@@ -33,6 +34,7 @@ impl fmt::Display for Error {
 			Error::Parse(message) => write!(f, "Parsing Error: {}", message),
 			Error::Tokenizing(message) => write!(f, "Tokenizing Error: {}", message),
 			Error::IO(message) => write!(f, "IO Error: {}", message),
+			Error::Config(message) => write!(f, "Config Error: {}", message),
 		}
 	}
 }

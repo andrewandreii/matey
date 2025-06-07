@@ -18,15 +18,15 @@ enum TemplatedString<'a> {
 }
 
 pub struct ConfigBuilder<'a> {
-	outfile: TemplatedString<'a>,
+	outfile: Option<TemplatedString<'a>>,
 	naming: RenamingScheme,
 	templates: Vec<ConfigTemplate<'a>>,
 }
 
 impl<'a> ConfigBuilder<'a> {
-	pub fn new<'b: 'a>(outfile: &'b str) -> Self {
+	pub fn new<'b: 'a>() -> Self {
 		ConfigBuilder {
-			outfile: TemplatedString::No(outfile),
+			outfile: None,
 			naming: RenamingScheme::Snake,
 			templates: Vec::new(),
 		}
@@ -41,11 +41,11 @@ impl<'a> ConfigBuilder<'a> {
 	}
 
 	pub fn set_outfile<'b: 'a>(&mut self, outfile: &'b str) {
-		self.outfile = TemplatedString::No(outfile);
+		self.outfile = Some(TemplatedString::No(outfile));
 	}
 
 	pub fn set_outfile_template<'b: 'a>(&mut self, outfile: Template<'b>) {
-		self.outfile = TemplatedString::Yes(outfile);
+		self.outfile = Some(TemplatedString::Yes(outfile));
 	}
 
 	pub fn set_naming<'b: 'a>(&mut self, naming: &'b str) {
@@ -65,12 +65,18 @@ impl<'a> ConfigBuilder<'a> {
 		};
 	}
 
-	pub fn build(self) -> Config<'a> {
-		Config {
-			outfile: self.outfile,
+	pub fn build(self) -> Fallible<Config<'a>> {
+		let outfile = if let Some(outfile) = self.outfile {
+			outfile
+		} else {
+			return Err(Error::Config("No output file specified".to_string()));
+		};
+
+		Ok(Config {
+			outfile,
 			rename: self.naming,
 			templates: self.templates,
-		}
+		})
 	}
 }
 
