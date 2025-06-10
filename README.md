@@ -61,7 +61,7 @@ And you're done.
 
 ### Documentation
 
-For more info about how to use matey, there will be a wiki available shortly on github.
+For a full description of the templates, consult the wiki on github.
 
 ### Contributing
 
