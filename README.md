@@ -3,11 +3,11 @@
 A minimalist Material 3 theme generator for your wallpapers.
 
 ### Features
-- Simple without unnecessary features.
-- Uses caching for blazingly fast config generation.
-- Simple template syntax.
-- All template info in the same file (output file, renaming scheme).
-- Uses only necessary dependencies.
+- No unnecessary features
+- Uses caching for blazingly fast config generation
+- Simple template syntax
+- All template info in the same file (output file, renaming scheme)
+- Uses only necessary dependencies
 
 ### Installation
 The only available ways are with cargo or compiling from source at the moment.
@@ -32,7 +32,7 @@ cargo install --path .
 
 Just follow these two simple steps:
 
-#### 1) Write your templates in `~/.config/matey`.
+#### 1) Write your templates in `~/.config/matey`
 They usually define the output file, (optionally) a renaming scheme and the actual template:
 ```
 #out "{CONFIG}/awesome-tool/config.conf"
@@ -43,11 +43,10 @@ foreach {
 }
 ```
 
-#### 2) Write a script to run matey and reload your tools:
+#### 2) Write a script to run matey and reload your tools
 ```sh
 # -u will tell matey to use cache
-# -f specifies the image
-matey -u -f $1
+matey -u $1
 
 # Reload everything relevant
 pkill --signal SIGUSR1 "helix"
@@ -61,7 +60,7 @@ And you're done.
 
 ### Documentation
 
-For a full description of the templates, consult the wiki on github.
+For a full description of the templates, consult the [wiki](https://github.com/andrewandreii/matey/wiki/Template-files) on github.
 
 ### Contributing
 
